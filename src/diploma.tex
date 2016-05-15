@@ -1,0 +1,104 @@
+\documentclass[12pt,a4paper,oneside]{report}
+%\documentclass[12pt,a4paper,twoside,openright]{report}  % Duplex
+
+\usepackage{xltxtra}
+\usepackage{mathtools}
+\usepackage{enumerate}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[top=25mm,right=25mm,bottom=25mm,left=35mm]{geometry}
+\usepackage{lastpage}
+
+\usepackage[hungarian,english]{babel}
+
+\usepackage{sectsty}
+\usepackage{setspace}
+\usepackage[hang]{caption}
+\usepackage{hyperref}
+\usepackage{minted}
+
+\newcommand{\vikszerzo}{Dányi Bence}
+\newcommand{\vikkonzulens}{Imre Gábor}
+\newcommand{\vikcim}{Valósidejű multiplayer böngészős játék fejlesztése}
+\newcommand{\viktanszek}{Automatizálási és Alkalmazott Informatika Tanszék}
+\newcommand{\vikdoktipus}{Diplomaterv}
+
+\pagestyle{plain}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt plus 3pt minus 3pt}
+
+\setcounter{secnumdepth}{2}
+\onehalfspacing
+
+\hypersetup{
+    bookmarks=true,            % show bookmarks bar?
+    unicode=false,             % non-Latin characters in Acrobats bookmarks
+    pdftitle={\vikcim},        % title
+    pdfauthor={\vikszerzo},    % author
+    pdfsubject={\vikdoktipus}, % subject of the document
+    pdfcreator={\vikszerzo},   % creator of the document
+    pdfproducer={XeLaTeX},     % producer of the document
+    pdfkeywords={},            % list of keywords
+    pdfnewwindow=true,         % links in new window
+    colorlinks=true,           % false: boxed links; true: colored links
+    linkcolor=black,           % color of internal links
+    citecolor=black,           % color of links to bibliography
+    filecolor=black,           % color of file links
+    urlcolor=black             % color of external links
+}
+
+\newcommand{\figref}[1]{\ref{fig:#1}.}
+\renewcommand{\eqref}[1]{(\ref{eq:#1})}
+\newcommand{\listref}[1]{\ref{listing:#1}.}
+\newcommand{\secref}[1]{\ref{sec:#1}}
+\newcommand{\tabref}[1]{\ref{tab:#1}.}
+
+\newminted[js]{javascript}{fontsize=\footnotesize}
+\newminted[jade]{jade}{fontsize=\footnotesize}
+\newminted[html]{html}{fontsize=\footnotesize}
+\newminted[sh]{sh}{fontsize=\footnotesize}
+\newminted[css]{css}{fontsize=\footnotesize}
+\newminted[stylus]{jade}{fontsize=\footnotesize}
+
+\author{\vikszerzo}
+\title{\viktitle}
+
+\includeonly{
+  titlepage,%
+  declaration,%
+  abstract,%
+  introduction,%
+  chapter1,%
+  chapter2,%
+  chapter3,%
+}
+
+\captionsetup[figure]{width=.75\textwidth,aboveskip=10pt}
+
+\renewcommand{\captionlabelfont}{\small\bf}
+\renewcommand{\captionfont}{\footnotesize\it}
+
+\begin{document}
+\addtocontents{toc}{\protect\setstretch{0.9}}
+\selectlanguage{hungarian}
+\pagenumbering{arabic}
+\include{titlepage}
+\tableofcontents\vfill
+\include{declaration}
+\include{abstract}
+\include{introduction}
+\include{chapter1}
+\include{chapter2}
+\include{chapter3}
+
+\listoffigures\addcontentsline{toc}{chapter}{Ábrák jegyzéke}
+% \listoftables\addcontentsline{toc}{chapter}{Táblázatok jegyzéke}
+
+\bibliography{bib/mybib}
+\addcontentsline{toc}{chapter}{Irodalomjegyzék}
+\bibliographystyle{plain}
+
+A hivatkozott internetes források utolsó hozzáférési ideje: \today
+
+\label{page:last}
+\end{document}
