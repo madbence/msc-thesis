@@ -4,18 +4,247 @@
 
 \section{Szerver oldali megvalósítás}
 
+\subsection{Autentikáció}
+
+Egy olyan rendszernél, melyben szükség van autentikációra, különösen kritikus a
+biztonságosság kérdése. A probléma megoldásánál figyelembe kell vennünk, hogy a
+számítógépek számítása kapacitása még mindig exponenciális növekedést mutat
+annak ellenére, hogy az órajelek már a szilícium-alapú chipek fizikai
+korlátainál vannak, azaz a gyorsulás már inkább az egyre több párhuzamosan
+dolgozó számítási egységnek köszönhető.
+
+A biztonságos adattároláshoz szükséges, hogy a felhasználók jelszavait ne
+közvetlenül tároljuk, hanem olyan formában, hogy abból egy esetleges támadás
+esetén semmiképpen ne lehessen visszafejteni az eredeti jelszót.
+
+A transzformációval szemben támasztott követelmények:
+
+\begin{itemize}
+  \item Legyen \emph{hash} függvény, azaz tetszőleges méretű bemenetet fogadjon,
+    és fix méretű kimenetet adjon.
+  \item Ne legyen invertálható, azaz ne lehessen a $h(x)$ hash alapján az $x$
+    értékét könnyedén megmondani.
+  \item Két ugyanolyan jelszó esetén se legyen ugyanaz a kimenet, hiszen ez egy
+    kiszivárgott jelszó esetén az összes többi ugyanolyan jelszót is leleplezi.
+  \item Legyen kellően lassan számolható. Azaz paraméterként tudjuk állítani az
+    elvárt számítási kapacitást is. Bár ezzel a feltétellel saját magunknak is
+    plusz munkát okozunk, a feltételezésünk az, hogy a felhasználók jelszavas
+    azonosítását viszonylag ritkán kell elvégezni, azaz itt a cél elsősorban egy
+    esetleges támadás esetén a támadó dolgának megnehezítése.
+\end{itemize}
+
+A nem-invertálhatóságot a kriptográfiai hash függvények teljesítik, így
+mindenképpen ezekből kell építkeznünk. A kimenetek különbözőségét egy
+jelszavanként különböző, ún. \emph{salt} értékkel érhetjük el, amit az inputhoz
+hozzáfűzünk a hashelés előtt. A salt értéke egy tetszőleges véletlenül generált
+érték, a nem szükséges titkosítva tárolni.
+
+Az utolsó pont megoldására (így a szerveren történő autentikációra) egy ún.
+KDF-et (\emph{key derivation function}) használtam. Az ilyen függvények képsek
+\emph{key streching}-re, azaz paraméterként megadhatunk egy iterációs számot,
+amivel a függvény futását lassíthatjuk (a magasabb iterációs szám eredményezi a
+lassabb futást).
+
+Az elkészült alkalmazásban a \texttt{pbkdf2} algoritmust használtam,
+a szeveren a felhasználók jelszavait pedig egy sorosított JSON objektumként tároltam,
+ami minden szükséges paramétert tartalmaz a validációhoz. Így pl. az
+\emph{almafa} jelszó egyik lehetséges tárolási formátuma az adatbázisban
+
+\begin{js}
+{
+  "hash":"4bofZYTh+TIeprLIisByLaB7BvZ8FcmqvyRIyDrmmCWDT97f60TO1qgYRwexc...",
+  "salt":"QqyMsCFXo5A9L2apbyzJaR3cxAcgPdTBg6olfZW0Q/XiTWOVREXBqhKK2++/c...",
+  "iterations":100000,
+  "len":128,
+  "digest":"sha512"
+}
+\end{js}
+
+Az iterációk száma így folyamatosan szabályozható, akár a regisztráció idejének
+függvényében módosítható, illetve a jelszavak akár minden belépésnél
+frissíthetőek az adatbázisban, így azok mindig kellően nagy iterációs
+paraméterrel fognak rendelkezni.
+
+\subsection{Munkamenetkezelés}
+
+A HTTP egy állapotmentes protokoll, így ha szükségünk van az állapot
+karbantartására (az egyik legkézenfekvőbb ilyen tulajdonság pl. az aktuális
+felhasználó azonosítója), akkor azt nekünk kell megoldanunk. A tipikus megoldás
+a problémára, ha egy azonosítót rendelünk a felhasználó munkamenetéhez (pl.
+bejelentkezéskor), ezt egy HTTP \emph{cookie}-ban eltároljuk, majd a szerveren
+az azonosítóhoz tartozó munkamenet-objektumot beolvassuk, illetve azt
+módosítjuk.
+
+Ezzel szemben az én megoldásom nem igényli az adatok szerveroldali tárolását,
+így az architektúra sokkal egyszerűbb. A munkamenetkezelás továbbra is
+cookie-alapon történik, azonban az egész munkamenet objektum ebben a sütiben
+van eltárolva.
+
+Természetesen szeretnénk, ha ezt a felhasználó nem tudná manipulálni (pl. átírni
+a saját felhasználó azonosítóját egy másik játékosére). Ehhez újfent a
+kriptográfiához fordulunk. A felhasználó számára kiküldött HTTP cookie-t
+aláírjuk (hozzáfűzünk) egy HMAC-et (\emph{hash-based message authentication
+  code}), ami biztosítja az adatok integritását (azaz a felhasználó nem tudja a
+tartalmát megváltoztatni), illetve biztosak lehetünk benne, hogy a sütit mi
+állítottuk ki.
+
+Az elkészült szoftverben a JWT (\emph{json web tokens}) implementációját
+használtam, ez támogatja a fent leírt eljárást, illetve más egyebeket is (pl.
+képes az adat titkosítására is, én azonban ezt nem tartottam fontosnak).
+
+\begin{js}
+{
+  "user": {
+    "id": 1
+  }
+}
+\end{js}
+
+A fenti JSON objektum (17 bájtos karakterláncként reprezentálható) leírható az
+alábbi aláírt karakterlánccal is (104 bájt)
+
+\begin{verbatim}
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxfX0.
+x--ftgJrZBR7ASBWv64OUOB59jaQ905rzlncCG6p7-Q
+\end{verbatim}
+
 \section{Kliens oldali megvalósítás}
+
+\subsection{Event sourcing}
+
+\subsection{Lokális predikció}
 
 \section{Kliens-szerver kommunikáció}
 
+\subsection{Websocket}
+
+Az egyik célja a dolgozatnak a minél optimálisabb Websocket kommunikáció volt,
+azaz meg kellett keresnem azt a minimális mennyiségű üzenetet, ami feltétlenül
+szükséges a kliensek (és a szerver) közti szinkronizációhoz.
+
+Ha feltételezzük, hogy a rendszer determinisztikus, akkor azonos kezdőállapotok
+mellett (és külső események nélkül) nincs szükség egyáltalán szinkronizációra.
+Könnyen beláthatjuk, hogy a szinkronizáció pont ezek miatt a külső események
+miatt szükséges. Ezek az események a játékosoktól (vagy ágensektől) származó
+inputok, illetve a szerver által generált események, tehát a szinkronizációhoz
+elegendő ezeket az eseményeket eljuttatni mindenkihez.
+
+A módszer másik előnye, hogy ezeket az eseményeket felvéve (azoknak az
+időzítésével együtt) rekonstruálni tudjuk a rendszer állapotát tetszőleges
+időpillanatban, így pl. az egyes játékok visszanézhetők utólag.
+
+\subsection{Üzenetek}
+
+A Websocket üzenetek JSON sorosított objektumok, minden üzenetnek van
+\emph{típusa}, illetve valamilyen \emph{payload}-ja, ez tartalmazza az üzenethez
+esetlegesen tartozó kiegészítő információkat.
+
+\subsubsection{Űrhajóvezérlés}
+
+\subsubsection{Fegyvervezérlés}
+
+\subsubsection{Szerver üzenetek}
+
 \section{Fizikai szimulációs modell}
+
+A feladatban kitűzött egyik sarokpont a minél pontosabb fizikai modell
+használata volt, így igyekeztem olyan kompromisszumos megoldást találni, amely
+kellően pontos, ám figyelembe veszi, hogy a szimulációt böngészőben, akár
+limitált erőforrásokkal kell futtatni.
+
+A szimulációnak folyamatosnak kell lennie, ez optimális esetben 60 képkockát
+jelent másodpercenként, azaz az egész szimulációnak kevesebb, mint 17
+ezredmásoperc alatt le kell futnia.  Ha figyelembe vesszük, hogy itt akár
+egyszerre több száz objektum viselkedését kell számon tartanunk, akkor érdemes
+nagyon okosan megválasztanunk a szimulációs modellünket.
+
+Az űrhajókat a két dimenziós síkon lévő merev kiterjedt testekkel modelleztem, a
+testek mozgását (az elmozdulását illetve orientiációját) pedig a rá ható
+tetszőleges $n$ számú erőkkel írtam le. Ezekből az $F_i$ erőkből kiszámolható a
+testre ható $F$ eredő erő, illetve $M$ forgatónyomaték.
+
+\begin{align*}
+F &= \sum_{i=0}^{n} F_i \\
+M &= \sum_{i=0}^{n} F_i \times r_i
+\end{align*}
+
+Ahol $r_i$ az $i$. erőkart (a test tömegközéppontjából az erő támadáspontjába
+mutató vektor) jelenti.
+
+Ebből a két mennyiségből képesek vagyunk kiszámolni idő szerinti integrálással a
+test sebességének, illetve szögsebességének megváltozását, amiből szintén egy
+újabb integrálással megkapjuk magát az $r$ helyvektort, illetve a $\theta$
+orientációt a $t$ időpillanatban.
+
+\begin{align*}
+v(t) &= \int_{0}^{t} \frac{F(t)}{m} dt \\
+\omega(t) &= \int_{0}^{t} \frac{M(t)}{I} dt \\
+r(t) &= \int_{0}^{t} v(t) dt \\
+\theta(t) &= \int_{0}^{t} \omega(t) dt
+\end{align*}
+
+Ahol $m$ a test tömege, $I$ pedig a test tehetetlenségi nyomatéka.  Az
+egyenletben szereplő $F(t)$ és $M(t)$ nem biztos, hogy könnyen integrálható
+függvények, így $r(t)$ és $\theta(t)$ csak közelítő módszerekkel számolható,
+hiszen a rendelkezésre álló néhány ezredmásodperc egészen biztosan nem elegendő,
+hogy szimbolikusan oldjuk meg a feladatot (ha egyáltalán meg lehet).
+
+Ha pl. feltételezünk egy gravitációs mezőt, ott a testre ható erő függ a test pozíciójától is,
+azaz egy másodrendű differenciálegyenletet kapunk.
 
 \subsection{Euler módszer}
 
-\subsection{Runge-Kutta módszer}
+Az Euler módszer pontosan a fenti integrálási problémára nyújt egy közelítő
+megoldást. A módszer lényege, hogy az ismeretlen függvényt (pl. a $v(t)$
+sebességfüggvényt) a deriváltja segítségével közelítjük (ez a példánk esetében az
+ismert $F(t)$ függvény).
+
+\[
+  v(t + \varepsilon) \approx v(t) + \varepsilon v'(t)
+\]
+
+Azaz a sebesség változását lineárisnak tekintjük. Ha az $\varepsilon$ kellően kicsi,
+akkor ez a közelítés valóban megállja a helyét, a módszer hibája egyenesen arányos
+$\varepsilon$-nal.
+
+Érdemes megjegyezni, hogy ha a hajóra ható erő és forgatónyomaték konstans,
+akkor az elkövetett hibánk $0$, így a sebességre és a szögsebességre pontos megoldásokat kapunk.
+Természetesen az így kapott függvények már nem konstansok, így az újabb integrálás
+már hibával fog járni.
+
+Mivel a szimulációnak folyamatosnak kell lennie, így az $\varepsilon$ változót is
+kicsinek kell megválasztanunk, azaz az elkövetett hibánk kellően kicsi lesz ahhoz,
+hogy az ne legyen zavaró a játékos számára.
+
+\subsection{Runge-Kutta (RK4) módszer}
 
 \section{Programozott vezérlés}
 
 \section{Saját ágensek írása}
 
+\section{Tesztelés}
+
 \section{Üzemeltetés}
+
+A szoftverfejlesztés folyamatának szerves része az elkészült szoftver
+üzemeltetése is, ezt az alkalmazást fejlesztő mérnökök nagyon gyakran
+hajlamosak elhanyagolni, mondván, hogy ez nem az ő feladatuk, hanem az
+üzemeltető rendszergazdáké.  Az agilis szoftverfejlesztés elterjedésével
+megjelent az igény a két terület - fejlesztés és üzemeltetés - közti szakadék -
+ha nem is betemetésére - de annak a szűkítésére.  Így alakult ki a
+\emph{DevOps} (a \emph{development} és \emph{operations} szavakból) kultúra,
+melynek célja a fejlesztők és az üzemeltetők közti szorosabb együttműködés
+támogatása.
+
+Ennek a kulturális változásnak az egyik legfontosabb aspektusa a
+\emph{Continous Delivery}, mely azt a képességet jelenti, hogy a fejleszés
+bármely pillanatában képesek vagyunk a szoftvert éles környezetben is
+beüzemelni, ellentétben a korábbi gyakorlattal, ahol ez egyáltalán nem volt
+megkövetelve, elgendő volt az ilyen problémákkal a fejlesztési ciklus
+lezárása előtt foglalkozni.
+
+% Természetesen egy ilyen folyamat - ha nem automatizáljuk - nagyon bonyolult és
+% hosszadalmas is lehet. Szerencsére ezek tipikusan olyan feladatok, melyek a fejlesztés során
+% ritkán változnak, így annak elvégzését a számítógépekre bízhatjuk. Ahhoz, hogy magabiztosan helyezzünk ki éles
+% környezetbe egy alkalmazást, fontos, hogy szoftver helyességéről legyünk meggyőződve,
+% ennek egyik lehetséges módja a megfelelő tesztlefedettség ()
