@@ -1,28 +1,406 @@
 \chapter{Felhasznált technológiák}
 
+A webes technológiák az okostelefonok és az internet rohamos terjedésének hála
+az IT ipar egyik leggyorsabban fejlődő ága lett.  A fejlesztői közösség soha nem
+látott mennyiségben készít nyílt forráskódú megoldásokat/szabványokat a
+felmerülő problémákra, így én meg sem kísérlem minden egyes felhasznált
+komponens felsorolását, pusztán azokat, amik később az alkalmazás fontos
+elemeivé váltak.
+
 \section{ECMAScript}
+
+Az ECMAScript nyelv egy gyengén típusos, dinamikus programozási nyelv, melyet
+Brendan Eich alkotott meg a Netscape böngésző szkriptelésére 1995-ben.  A nyelv
+eredeti neve Mocha, ami később LiveScript, majd JavaScript-re módosult.  Végül a
+Netscape-et fejlesztő Sun Microsystems az Ecma International-ra bízta a nyelv
+szabványosítását, így módosult a név végül ECMAScript-re (a JavaScript márkanév
+továbbra is a Sun Microsystems-nél maradt, illetve így jelenleg az Oracle
+tulajdona). A továbbiakban az ECMAScript és a JavaScript szavakat az
+egyértelműség (és a történeti okok) miatt felcserélhetőnek veszem, mindkét
+változat ugyanazt a fogalmat takarja.
+
+Az ECMAScript nem egy konkrét implementációt jelöl, hanem egy szabványt, így
+annak számos független megvalósítása érhető el.  Böngészős környezetben a négy
+nagy böngészőgyártó (Google, Microsoft, Mozilla, Apple) mind-mind saját
+megoldásokat szállítanak, ezek rendre a V8, Chakra, SpiderMonkey és
+JavaScriptCore nevű ECMAScript implementációk.  Natív környezetben a .NET
+keretrendszerben a JScript, Java környezetben pedig a Rhino/Nashorn
+megvalósítások érhetőek el.  Az önállóan futtatható szerveroldali JavaScript
+megoldások a piac egy új szegmensét jelentik, itt jelenleg a Node.JS az egyedüli
+jelentős piaci szereplő.
+
+A nyelvet karbantaró bizottság neve TC39, melynek tagjai az implementációkat
+gyártó cég mérnökei, illetve számos más, nyelvtervezésben jártas ember.
 
 \subsection{A nyelv egyes verziói}
 
+Az ECMAScript szabványt számos kritika az átgondolatlan kidolgozása miatt
+(Brendan Eich saját bevallása szerint a nyelv első implementációját egy hét
+alatt írta meg), azonban a 6. kiadás (hivatalos nevén ECMAScript2015, a
+továbbiakban ES2015) már egy komoly tervezési folyamat eredménye.  A TC39 az
+egyes újításokat egy ötlépcsős folyamatban vezeti be, melynek első fázisa a
+\emph{Strawman}, amely pusztán egy informális leírás, az utolsó lépés pedig a
+ténylegesen szabványba emelés.
+
+A nyelv első és hatodik kiadása között meglehetősen nagy idő telt el, ez részben
+az lassú implementálásnak köszönhető (a böngészők tipikusan jópár év késésben
+vannak a szabványhoz képest), másrészt a nyelv elhanyagoltsága miatt (hiszen
+csak az utóbbi néhány évben jelent meg az igény komplex, interaktív webes
+alkalmazások iránt). Az ES2015 véglegesítésével ezt szeretné a TC39
+megváltoztatni, az elképzelések szerint évente fog érkezi a nyelv új és újabb
+kiadása (innen adódik az áttérés az évszámokra, a korábban ES 6-ként hivatkozott
+szabvány valójában hivatalosan ES2015, vagy ECMAScript 6th Edition).
+
 \subsection{Fordítási megoldások}
+
+A böngészők verzióinak sokfélesége és a lassú adaptáció miatt a biztonságosan
+használható ECMAScript verzió a 2009-ben kiadott ötödik kiadás (ES5).  Mivel ez
+számos kényelmetlenséggel jár (nem használhatunk ki minden kényelmes nyelvi
+elemet), így egy kerülőmegoldáshoz kell fordulnunk: Az elkészült programkódot a
+nyelv egy megfelelő támogatottsággal rendelkező verziójára kell lefordítanunk,
+az ES5-re.  Erre számtalan megoldás létezik, azonban a \emph{6to5} (későbbi
+nevén \emph{Babel}) került ki győztesként a versengő programok közül (maga mögé
+utasítva a Google által fejlesztett Traceur compilert is).
 
 \subsubsection{Babel}
 
+A Babel, korábbi nevén \emph{6to5} egy JavaScript compiler (a névváltás oka
+abban keresendő, hogy nem csak ES6 kódot képes ES5 kódra fordítani), melyben a
+cél és forrásnyelv is ugyanaz, így a feladata a beolvasott program által
+reprezentált \emph{AST} (Abstract Syntax Tree) transzformálása úgy, hogy a
+szabványban szereplő újabb nyelvi elemeket a szabvány régebbi elemeinek feleltet
+meg, így biztosítva a kompatibilitást a régebbi böngészőkkel. Szerencsére a
+nyelvi elemek többsége olyan \emph{syntactic sugar}, melyen a transzformáció
+elvégezhető, azonban akad néhány kivétel, amivel sajnos a fordító nem tud mit
+kezdeni (ilyenek pl. a \texttt{Proxy} objektumok)
+
+A Babel felépítése teljesen moduláris, kiegészíthető \emph{szintaxis
+  plugin}ekkel, mellyel képes beolvasni akár még csak kezdeti stádiumban lévő
+(pl. \texttt{async await} szintaxis), vagy szabványon kívül élő nyelvi elemeket
+(pl. React elemek, Flowtype annotációk).  A beolvasott kódból egy \emph{AST}
+épül, melyet különböző \emph{transform plugin}ekkel tud a compiler átírni
+olyanra, hogy azt a régebbi böngészők is képesek legyenek értelmezni, futtatni.
+
 \subsubsection{Browserify}
+
+Ha egy HTML oldalba JavaScript kódot ágyazunk, akkor az egyik lehetőség, hogy
+egy \texttt{<script>} tagbe ágyazzuk. Ha több JavaScript fájlra van szükségünk,
+akkor értelemszerűen minden fájlhoz egy ilyen HTML tag szükséges.  A megoldásnak
+számos hátránya van:
+
+\begin{itemize}
+\item Minden fájl egy önálló HTTP(S) kérést jelent, ami nagy számú fájl esetén
+  sok időt vesz el. Bár ezeket képes lenne a böngésző párhuzamosan letölteni,
+  tipikusan mégsem teszi, egyéb okok miatt tipikusan csak néhány (4-6db)
+  párhuzamos kapcsolatot enged meg hosztonként.  A \emph{HTTP pipeliniing}
+  technika erre nyújtana megoldást: az egyes kérések párhuzamosan
+  elindíthatóak, nem szükséges megvárni a választ rájuk. A
+  megoldás a megbízhatatlan implementációk miatt sajnos sosem terjedt el.
+\item Az egyes állományok között függőségek lehetnek, ezért a fájlok betöltési
+  sorrendje kulcsfontosságú. Vagy nekünk kell ügyelnünk a megfelelő sorrendre,
+  vagy valamilyen kódolási mintát (pl. module pattern) kell használnunk, ami
+  elfedi a betöltési sorrend okozta problémákat.
+\item A fájlok listáját karban kell tartanunk. Ez már néhány fájl esetén is
+  olyan problémát jelent, amit mindenképpen érdemes automatizálni. Egy elegáns
+  megoldással azonban minden fent felsorolt probléma megoldható
+\end{itemize}
+
+A \texttt{browserify} feladata, hogy számos forrásfájlból és különböző
+függőségeiből egy önállóan futtatható JavaScript állományt készítsen.  Ehhez
+első lépésben felderíti az egyes fájlok (modulok) közötti kapcsolatokat, majd
+kialakítja a megfelelő betöltési sorrendet, végül a fájlokat összefűzi.  A
+browserify szintén számos kiegészítővel használható együtt.  Az egyik
+leghasznosabb ilyen a \texttt{babelify}, ami támogatást nyújt a Babel
+transpilerhez, így a modern JavaScript-ben írt kódunkat tudjuk futtatni régebbi böngészőkben is.
+Egy másik általam használt kiegészítő a \texttt{watchify}, ami képes
+a browserify fordítási folyamatát inkrementálissá tenni, azaz az első fordítás
+után a következő futtatások csak néhány ezredmásodpercet vesznek igénybe, így
+minden változtatás eredmény szinte azonnal, valós időben látszik, ami
+nagyban megkönnyíti a fejlesztést.
+
+Ha programunknak valamilyen transzformált verzióját futtatjuk, az egyik
+felmerülő probléma a debugolás kérdése. A debug eszközöknek tipikusan szükségük
+van egy megfeleltethetőségi táblázatra, ami alapján a generált kódból vissza
+tudják keresni, hogy mi felelt meg annak az eredeti forrásban. Ez az ún.
+\emph{sourcemap}. Segítségével mindig az eredeti forráskódot látjuk hibakeresés
+közben, miközben a tényleges kód akár merőben más is lehet.  Ennek tipikus
+esete a \emph{minifikálás}, melynek célje értelemszerűen a JavaScript állomány
+méretének csökkentése.  Ilyenkor a fájl egyes szimbólumait a fordító átnevezi,
+illetve a statikus analízis során elemzett kód biztosan nem lefutó részeit is
+eltávolítja (\emph{dead code elimination}).
 
 \subsection{Erősen típusos alternatívák}
 
-\subsubsection{Typescript}
+Az ECMAScript egyik legnagyobb hátrányaként tipikusan a statikus típusosság
+hiányát szokták felróni.  Az ilyen jellemzőkkel rendelkező programkódot már
+fordítási időben is számtalan típusú analízisnek lehet alávetni, így csökkentve
+a hibák számát.  A fejlesztő szemszögéből viszont talán a leghasznosabb
+következménye, hogy a szerkesztő felület képes a megfelelő automatikus
+kódkiegészítéseket felajánlani, képes az automatikus refaktorálásra.  Dinamikus
+típusosság mellett ezek a lehetőségek csak nagyon korlátozottan használhatóak
+(de léteznek kísérleti megoldások, pl. TernJS).  Erre nyújtanak megoldást a
+JavaScript nyelvet statikus és erős típusossággal kiegészítő nyelvi elemek,
+melyek közül a Microsoft TypeScript nyelvét, és a Facebook Flowtype megoldását
+mutatom be.
+
+\subsubsection{TypeScript}
+
+A TypeScript egy a JavaScript-tel kompatibilis nyelv, azaz minden
+szintaktikailag érvényes JavaScript kód érvényes TypeScript kód is.  A nyelv
+kiegészíti az ECMAScript szabványt a jól ismert programozási koncepciókkal
+(típusannotációk, interfészek, felsorolt típusok, stb), illetve képes a program
+helyességét a típusannotációk, és a típus következtetés (\emph{type inference})
+alapján megvizsgálni.
+A fordító JavaScript kódot generál, ami többnyire csak a szintaxis eltüntetését jelenti, azaz nincs runtime overheadje (náhány kivételtől, pl. felsorolt típusoktól eltekintve).
+
+Érdekesség, hogy a kódban megjelenő interfészek implementációja
+implicit, azaz struktúra-alapú (\emph{structural typing}), ellentétben a C\#
+vagy Java nyelvben megszokott explicit implementációval (\emph{nominal typing}).
 
 \subsubsection{Flowtype}
 
+A Flowtype a Facebook által fejlesztett (és használt) statikus típusellenőrző.
+Az ECMAScript nyelvet típusannotációkkal (illetve típusdeklarációkkal) egészíti
+ki, aminek a szintaxisa nagyon hasonló a TypeScripthez.  Erősen alkalmazkodik a
+típuskövetkeztetésekre, így elegendő pusztán a modul (fájl) által kívülről is
+elérhető függvényeit annotálni.  A type inference segítségével minden további
+kód annotációk nélkül ellenőrizhető.
+
+\begin{js}
+// @flow
+function foo(x) {
+  return x * 10;
+}
+foo('bar');
+\end{js}
+
+A fenti kód nyilvánvalóan hibás, és ezt a Flowtype helyesen ki is következteti,
+hiába nem annotáltuk fel megfelelően a kódunkat. Természetesen bármikor
+használhatunk explicit típusannotációkat is:
+
+\begin{js}
+// @flow
+function foo(x: number): number {
+  return x * 10;
+}
+\end{js}
+
+A típusok nominális típusok, így ilyen értelemben a Flowtype szigorúbb, mint a
+TypeScript.  Sajnos jelenleg a program Windows támogatása még csak kísérleti
+stádiumban van, szerencsére ez számomra nem jelentett problémát.
+
+A dolgozatomban elkészített program fejlesztéséhez a Flowtype-ot választottam,
+mint statikus típusellenőrző, mivel a többi meglévő eszközzel (babel és
+browserify) kiválóan működik együtt, és nem rendelkezik semmilyen futásidejű
+overheaddel. Bár a felhasználói közössége jóval kisebb, a mögötte álló Facebook
+számomra meggyőző érv volt a használatára.
+
 \section{Node.js}
+
+A Node.js egy JavaScript futtatókörnyezet, mely az ECMAScript szabvány
+támogatásán kívül egy minimális standard könyvtárat is tartalmaz, amivel az
+operációs rendszer egyes gyakran használt szolgáltatásait vehetjük igénybe,
+ilyenek pl. a fájlműveletek, illetve a hálózati kapcsolatok.  A futtatott kód a
+Google v8 motorja segítségével fut, azonban már kísérleti stádiumban létezik
+Chakra (Edge) illetve SpiderMonkey (Firefox) backend is.
 
 \subsection{Aszinkron működés}
 
+A nyelv alapvetően egyszálú működésre van tervezve, így rengeteg komplexitástól
+meg tudunk szabadulni egy-egy program írása során (pl. nincs szükség kölcsönös
+kizárásra).  A helyettesítő megoldás párhuzamos feldolgozásra az eseményvezérelt
+(\emph{event-driven}) programozás.
+
+A modell központi eleme az \emph{eseményhurok} (\emph{event loop}), mely egy
+végtelen ciklus, feladata az eseménysorba beérkező események feldolgozása.
+Hasonló elven működnek a grafikus rendszerek is, ott szintén a több szálú
+működés okozta kompexitás miatt volt szükség egy egyszerűbb modellre
+
+Az aszinkron rendszerhívásokért a \texttt{libuv} felel, mely elfedi a különböző
+operációs rendszerek implementáció közötti különbségeket.  Windows alatt ez a
+\emph{I/O Completion Ports} technológiát, UNIX alapú rendszereken pedig az
+\texttt{epoll}/\texttt{kqueue} rendszerhívásokat jelenti.
+
+% TODO
+
+Aszinkron feldolgozáskor elegendő pusztán beregisztrálni a művelet befejezése
+után lefutó callback függvényre:
+
+\begin{js}
+http.get('http://example.org', (err, res) => {
+  if (err) {
+    // hibafeldolgozás
+  }
+  // a válasz feldolgozása
+});
+\end{js}
+
+A futtatott JavaScript kód továbbra is egy szálon fut, azonban a művelet
+elkezdése (\texttt{http.get} hívás) után a vezérlés visszakerül a Node.JS
+eseményhurokjába, így más műveleteket is végre tud az hajtani.  Egy webszerver
+esetében ez kívánatos működés, hiszen szeretnénk párhuzamosan több kérést is
+kiszolgálni, így amíg egy művelet (adatbázis-, fájlművelet, stb) eredményére
+várunk, addig meg tudjuk kezdeni a következő HTTP kérés feldolgozását.
+
+Mivel a futás itt sem párhuzamos (de konkurrens), így itt is tudnuk blokkoló
+műveleteket írni, amik akadályozni fogják a feldolgozást (nincs meg a szálaknál
+megszokott preemptív ütemezés).  Ha ilyen problémába ütközünk, alapvetően három
+lehetőségünk van:
+
+\begin{itemize}
+\item Az alkalmazásunkat több példányban futtatjuk.  Erre a \texttt{cluster}
+  beépített modul ad lehetőséget.  Ebben a modellben egy \emph{master} folyamat
+  több \emph{worker} folyamatot indít, majd ezek után a \emph{master} csak
+  fugadja a beérkező kéréseket, és továbbítja azokat a feldolgozóknak.
+\item Natív kiegészítést írunk, a Node.JS C++ API-ját felhasználva.  Ekkor
+  teljesen szabad kezet kapunk, írhatunk több szálú programokat, viszont nekünk
+  kell ügyelni az ezzel járó nehézségekre is.  Az elkészült modul függvényeit
+  képesek vagyunk hívni JavaScript kódból is, így a fejlesztő számára semmilyen
+  változást nem jelent, csak a mögöttes implementáció változik meg.
+\item Saját kommunikációs modellt definiálunk, és a számításigényes feladatokat
+  valamilyen háttérfolyamatban végezzük el.  Az egyes Node.JS folyamatok képesek
+  IPC segítségével kommunikálni egymással, itt a kommunikációs API megoldja az
+  egyes objektumok szerializálását és deszerializálását.
+\end{itemize}
+
+\subsection{Stream alapú feldolgozás}
+
+\subsection{\texttt{async} függvények}
+
+A \emph{callback} alapú megoldások megoldást jelentenek az aszinkron
+programozásra, de a használatuk nagyon körölményes.
+
+\begin{js}
+foo(err => {
+  if (err) {
+    // hibakezelés
+  }
+  bar(err => {
+    if (err) {
+      // hibakezelés
+    }
+    baz(err => {
+      if (err) {
+        // hibakazelés
+      }
+    });
+  });
+});
+\end{js}
+
+Ahogy látható, nincs lehetőség a más nyelvekben megszokott kivételek
+használatára.  Ha jobban belegondolunk, ez természetes. Amikor a callback
+függvényünk lefut, a hívó kontextus már régen véget ért, így egy kivétel dobása
+esetén vissza sem tudunk térni oda.
+
+A probléméra a megoldást a \texttt{Promise} objektumok nyújtják.  Ez az objektum
+egy aszinkron művelet reprezentál, mely vagy lefut és valamilyen eredményt
+produkál (\texttt{resolve}) vagy meghiúsul valamilyen kivétellel
+(\texttt{reject}).  Ami többletet a callbackekkel szemben nyújtanak, hogy láncba
+lehet őket fűzni, így a kód olvasható, jobban követhető marad, és a hibakezelést
+is elég egy helyen megoldani.
+
+\begin{js}
+foo()
+  .then(bar)
+  .then(baz)
+  .catch(err => {
+    // hibakazelés
+  });
+\end{js}
+
+Sajnos a szintaxis továbbra sem kellemes, erre nyújt megoldást az ECMAScript2015
+egyik újdonsága, a generátor függvények. A generátorok pont azt a problémát
+oldják meg, amit a kivételkezelésnál hiányoltunk: a programunk egy hiba esetén
+nem tud visszatérni a hívójához, hiszen az már nem is létezik.  A generátor
+függvények a hagyományosokkal szemben \emph{megszakíthatóak}, később képesek
+folytatni a futásukat.
+
+\begin{js}
+function* process() {
+  try {
+    yield foo();
+    yield bar();
+    yield baz();
+  } catch (err) {
+    // hibakezelés
+  }
+}
+\end{js}
+
+A \texttt{process} generátor függvény \texttt{Promise} objektumokat generál
+(erre szolgál a \texttt{yield} kulcsszó), azaz azok feloldása után a futás
+folytatódni tud, ahol előtte abbamaradt.  A megoldandó problémát itt maga a
+\texttt{process} függvény jelenti, szükségünk van egy olyan futtatókörnyezetre,
+ami ismeri ezt az általunk használt generátor protokollt.  Számos könyvtár
+érhető el, ami pont ezeknek a generátoroknak az ütemezését oldja meg, ilyen pl.
+a \texttt{co}.
+
+Jelenleg még \emph{Candidate} stádiumban van az \texttt{async await} nyelvi
+elem, mely a fenti függvényekhez hasonló működést nyújt, natívan.  Működés
+szempontjából a C\#-ban már meglévő hasonló nyelvi konstrukciónak felel meg, az
+ottani \texttt{Task<T>} szerepét természetesen a \texttt{Promise} veszi át.
+
+\begin{js}
+async functon process() {
+  try {
+    await foo();
+    await bar();
+    await baz();
+  } catch (err) {
+    // hibakezelés
+  }
+}
+\end{js}
+
+A programkód tömör, jól követhető, a működés világos.  Várhatóan először az Edge
+böngésző fogja implementálni ezt a nyelvi elemet, addig azonban szükség van a
+Babel-re, ami a fenti kódot egy generátor-alapú kódra fordítja (amit akár még
+nagyobb kompatibilitással rendelkező ES5 kódra), így gyakorlatilag minden
+böngészőben (és Node.JS környezetben) képes futni a fenti kód.
+
 \subsection{npm}
 
-\section{koa}
+Node.JS környezetben az egyes függőségek a CommonJS szabványnak megfelelően
+tölthetőek be, a függőségek a \texttt{require} fügvénnyel, a publikálandó
+függvények/objektumok pedig az \texttt{exports} változóhoz csatolva
+exportálhatók.
+
+\begin{js}
+const foo = require('./foo.js');
+
+export.bar = function bar() {
+  return foo() + ' bar!';
+};
+\end{js}
+
+Természetesen ha Babel-lel fordítjuk a kódunkat, akkor használhatjuk az ES2015
+által definiált modul szintaxist is: (a kód CommonJS-re fordul)
+
+\begin{js}
+import foo from './foo';
+
+export function bar() {
+  return foo() + ' bar!';
+}
+\end{js}
+
+A Node.JS alap könyvtára csupán néhány alapvető API-t biztosít, a problémák
+többségét a fejlesztői közösségre bízta.  Az elkészült modulok egy
+\emph{registry}-ből tölthetőek le az \texttt{npm} parancs segítségével.
+Csomagokat bárki publikálhat, pusztán a csomag nevének egyediségét kell
+biztosítani.
+
+Az NPM csomagok túlnyomó többsége a szemantikus verziókezelést használja, így az
+egyes csomagok frissítése egyszerű és biztonságos, nem kell attól tartanunk,
+hogy az új csomagverzió kompatibilitási problémékat fog okozni.  Az egyes
+csomagok három verziószámmal vannak ellátva,
+\emph{major}.\emph{minor}.\emph{patch}, amennyiben csak a \emph{patch} verzió
+változott, biztosak lehetünk benne, a működése visszafelé kompatibilis.  Ha a
+\emph{minor} verzió nőtt meg, a kód még mindig visszafelé kompatibilis, viszont
+a modul funkcionalitása kibővült.  Ha a \emph{major} verzió nőtt meg, akkor nem
+kapunk semmilyen garanciát a kompatibilitásra.  A csomagok frissítésekor ezeknek
+megfelelően eljárva tudjuk biztonságosan frissíteni azokat.
 
 \section{React}
 
@@ -36,11 +414,75 @@ alternatívák: reflux, fluxxor, etc
 
 \section{Webszerver keretrendszerek}
 
-express, hapi, restify, koa
+A Node.JS futtatókörnyezet HTTP API-ja pusztán egy nagyon vékony réteget nyújt:
+
+\begin{js}
+http.createServer((req, res) => {
+  // kérés feldolgozása
+})
+\end{js}
+
+Egy komplex webalkalmazáshoz ez nem elegendő.  Szerencsére számos nyílt
+forráskódú megoldás érhető el, amik számos problémát megoldanak helyettünk
+(routeolás, fájlok kiszolgálása, cookie-k kezelése, stb), ilyen pl az
+\emph{express}, a továbbfejlesztett verziója a \emph{koa}, REST API-k
+definiálásához használatos \emph{hapi} illetve \emph{restify} keretrendszerek.
+Én a dolgozatban az első kettőt mutatom be részletesebben.
 
 \subsection{express}
 
+Az \emph{express} keretrendszer eredetileg a Ruby alapú \emph{sinatra} framework
+által inspirált modul, jelenleg az IBM gondozásában fejlesztik.  A keretrendszer
+fő építőköve a \emph{middleware}, ami HTTP kérés feldolgozásának egy jól
+elhatárolható lépését végzi el.  A segítségükkel könnyedén szét tudjuk szedni az
+alkalmazást jól definiált, szűk felelősséggel rendelkező komponensekre. Ilyen
+lehet pl. a kérések naplózása, jogosultságkezelés, munkamenetkezelés, stb.
+Minden middleware pusztán egy egyszerű három paraméteres függvény, amit a
+\texttt{use} metódussal tudunk az alkalmazásra felcsatolni.
+
+\begin{js}
+app.use((req, res, next) => {
+  // feldolgozás
+  next();
+});
+\end{js}
+
+Mivel az egyes lépések a \texttt{next} hívás hatására indulnak el, így a
+middleware-ek aszinkron működésűek.
+
 \subsection{koa}
+
+Az \emph{express} fejlesztői a tapasztalataikat összegezve alkották meg a
+\emph{koa} keretrendszert. A modul fő építőköve szintén a middleware, azonban a
+fő cél az intuitívabb aszinkron működés, illetve a modularitás volt, így néhány
+kivételtől eltekintve minden, az expressben meglévő middleware szolgáltatás ki
+lett szervezve, így biztosítva a testreszabható működést.
+
+A middleware-ek szingnatúrája egyszerűsödött, illeve az aszinkron működést a
+generátor-alapú működés biztosítja:
+
+\begin{js}
+app.use(function* (next) {
+  // feldolgozás
+  yield next;
+});
+\end{js}
+
+(ábra)
+
+A \emph{koa} következő verziójában még inkább egyszerűsödik a működés, az
+aszinkronitást a \texttt{async} függvények oldják meg:
+
+\begin{js}
+app.use(async (ctx, next) => {
+  // feldolgozás
+  await next;
+});
+\end{js}
+
+Látható, hogy a \emph{koa} sokkal kényelmesebb fejlesztést, intuitívabb működést
+nyújt, így a dolgozatban elkészített programban a \emph{koa} keretrendszert,
+annak is az 1-es verzióját használtam.
 
 \section{Adatbázis}
 
@@ -54,11 +496,65 @@ MySQL, NoSQL
 
 \section{CSS stílusok}
 
-CSS, SASS, LESS, Stylus
+A CSS leírónyelv a HTML (illetve egyéb XML-variáns) dokumentumok formázását
+hivatott leírni, a nyelv karbantartója a W3C (World Wide Web Consortium). A
+nyelv különböző \emph{szelektorok} által meghatározott elemek megjelenítési
+tulajdonságait módosítja, az egyes szabályokat egy meghatározott sorrendben
+alkalmazva.
+
+A nyelv számos rugalmatlansággal rendelkezik, pont ilyen okokból jöttek létre
+tömörebb variánsai, amik számos nyelvi kiegészítéssel rendelkeznek, és
+hasonlóan a Babel-hez, ezek a compilerek a saját nyelvüket fordítják le a
+böngésző számára is érthető CSS deklarációkra.  Ilyen megoldások a LESS, SASS
+vagy a Stylus.
 
 \subsection{LESS}
 
+A LESS az egyik legnépszerűbb ilyen CSS köré épülő nyelv (saját definíciójuk
+szerint CSS preprocesszor), a CSS eredeti szintaxisát megtartva kiegészíti azt,
+így támogatva olyan nyelvi konstrukciókat, mint az egymásba ágyazott
+szelektorok vagy a mixinek, képes változók kezelésére, stb.
+
+\begin{css}
+@my-color: red;
+.foo {
+  .bar {
+    color: @my-color;
+  }
+}
+\end{css}
+
+A fenti kód egy példa az egymásba ágyazott szelektorokra, illetve a változókra.
+A lefordított kód továbbra is érvényes CSS kód marad:
+
+\begin{css}
+.foo .bar {
+  color: red;
+}
+\end{css}
+
+A fordító maga JavaScript-ben van megírva, így könnyedén használhatjuk az
+\texttt{npm} csomagkezelő segítségével.
+
 \subsection{Stylus}
+
+A Stylus egy radikálisabb alternatíva CSS preprocesszorokra, a szintaxisának
+legfőbb eleme a tömörség, előszeretettel támaszkodik a \emph{whitespace}-ek
+alkalmazására, a behúzás mértékével jelezve a szelektor hatókörét.  Az alábbi
+deklaráció eredménye ugyanaz, mint a LESS példában szereplő kódé.
+
+\begin{css}
+my-color = red
+.foo
+  .bar
+    color my-color
+\end{css}
+
+A Stylus fordító szintén JavaScript-ben van implementálva, így hasonlóan
+használható, mint a LESS.  A dolgozatban szereplő alkalmazáshoz a Stylus
+preprocesszor használata mellett döntöttem, mert stabil fejleszőbázissal
+rendelkezik, a szintaxisa pedig elegánsabb a többi megoldásnál.
+
 
 \section{Grafika}
 
