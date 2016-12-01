@@ -1,6 +1,36 @@
 \chapter{Tervezés, megvalósítás}
 
+\section{A játék}
+
+A játékban tetszőleges számú játékos vesz részt, ahol minden játékos egy űrhajót
+irányít egy két dimenziós, potenciálisan végtelen nagy játéktéren. A játék célja
+minél több pont összegyűjtése, amit másik játékosok űrhajójának
+megsemmisítésével lehet szerezni, amihez az űrhajókra szerelt fegyvereket lehet
+használni. TODO fizika
+
+A játékmenet élvezetesebbé tételéhez azonban megszorítások vannak a játékra:
+
+\begin{itemize}
+  \item A játékosok száma maximalizálva van (TODO), hogy az ebből adódó
+    esetleges teljesítményproblémákat megelőzzem. Hogy a játék mégse legyen
+    ilyen korlátozott, a játék képes több \emph{szoba} elindítására is, így a
+    szerver egy nagyon komplex játék helyett több kisebb létszámú szobát kezel.
+  \item A játéktér mérete limitálva van, ezen túllépve a játékos először
+    figyelmeztetés kap, majd az űrhajója megsemmisül. Ezzel a játék izgalmasabbá
+    válik, hiszen a felhasználók könnyebben megtalálhatják egymást
+  \item A játékban elérhető sebesség korlátozva van, így nem lehet korlátlanul
+    nagy sebességet elérni (TODO)
+
 \section{Architektúra}
+
+Az alkalmazás alapvetően két szoftverkomponensből áll, egy kliens oldali
+JavaScript alapú Single Page Application-ből, illetve egy szintén JS alapú
+szerver alkalmazásból.  A kliens egy minimális HTML kódba lett beágyazva, a
+böngészőbe ezt a fájlt betöltve (azaz a játék oldalára ellátogatva) elindul az
+alkalmazás, automatikusan csatlakozik a szerverre, készen áll a játékra.  A
+szerver egy HTTP és egy Websocket interfésszel rendelkezik, előbbi felelős
+kliens számára szükséges állományok kiszolgálásáért (JS, CSS állományok és
+képek), utóbbira pedig a játék tényleges lebonyolításáért felelős.
 
 \section{Szerver oldali megvalósítás}
 
@@ -110,9 +140,46 @@ x--ftgJrZBR7ASBWv64OUOB59jaQ905rzlncCG6p7-Q
 
 \section{Kliens oldali megvalósítás}
 
-\subsection{Event sourcing}
+A kliens egy Single Page Application, azaz a hagyományos HTML alapú oldalakkal szemben, ahol minden egyes alkalmazásképernyő egy új HTTP kérés-válasz ciklus jelent, itt erre pusztán egyszer van szükség, minden további interakciót a futtatott JavaScript kód kezel le, annak a feladata a különböző grafikus komponensek megjelenítése, illetve szerverrel történő kommunikáció.
 
-\subsection{Lokális predikció}
+\subsection{Felhasználói felület}
+
+\subsection{Grafika megvalósítás}
+
+\subsection{Játéklogika}
+
+Mind a kliens, mind a szerver alkalmazás központi eleme a játékszabályok
+betartásáért felelős üzleti logika. Ennek a feladata, hogy a hozzá beérkező JSON
+sorosított utasításokat végrehajtsa. A konkrét implementációban ezt a szerepet
+egy \texttt{GameRunner} objektum látja el. Az objektum tartalmazza egy aktuális
+játék állapotát a \texttt{state} mezőjében, illetve rendelkezik egy
+\texttt{handle(action: Action): void} metódussal.
+
+Fontos, hogy a játék állapotát reprezentálható objektum \emph{immutable}, azaz
+nem módosítható. Helyette kötelezően egy \emph{új} állapotot kell létrehoznia.
+Ez biztosítja, hogy bármelyik időpontban \emph{snapshotot} készíthessünk a játék
+állapotáról, ami a lokális predikció működéséhez szükséges.
+
+A \texttt{GameRunner} mentes minden külső függőségtől, működéséhez fontos, hogy
+a \emph{handle} metódus csak a bemenő paramétertől, illetve a saját belső
+állapotától függjön, tehát ennek a két adatnak kell minden szükséges információt
+tartalmaznia. Mivel a játék nem használ \emph{ütemező} üzeneteket, így minden
+végrehajtandó akció mellé csatolni kell a hozzá tartozó időbélyeget is. Ezeknek
+az információknak a tudatában elő lehet állítani a játék állapotát, amire már a
+paraméterben kapott művelet is hatással van. A végrehajtás két lépésben
+történik:
+
+\begin{enumerate}
+  \item Az akció időbélyege, és az aktuális időbélyeg alapján végrehajtjuk a fizikai szimulációt, azaz a különböző objektumokat adott időegységekkel léptetjük, amíg el nem érjük a kívánt időpontot. Itt történik meg minden determinisztikus játéklogika, azaz az ütközéskezelés, pontok számolása is.
+  \item Végrehajtjuk a tényleges akciót (pl. új lövedéket helyezünk el a játéktéren a lövés hatására)
+\end{enumerate}
+
+A \texttt{GameRunner} mivel nem rendelkezik külső függőségekkel, így mind
+kliens, mind szerveroldalon futhat. A kliens és a szerver alkalmazások csak
+minimálisan kommunikálnak egymással, így erre szükség is van, a játék minden
+csatlakozott kliensen és a szerveren egyeránt párhuzamosan fut, és pusztán a
+szinkronizációhoz szükséges adatokat adják át egymásnak. A lehetséges
+üzenettípusokkal \aref{sec:messages}. fejezet foglalkozik.
 
 \section{Kliens-szerver kommunikáció}
 
@@ -133,17 +200,55 @@ A módszer másik előnye, hogy ezeket az eseményeket felvéve (azoknak az
 időzítésével együtt) rekonstruálni tudjuk a rendszer állapotát tetszőleges
 időpillanatban, így pl. az egyes játékok visszanézhetők utólag.
 
-\subsection{Üzenetek}
+\subsection{Üzenetek}\label{sec:messages}
 
 A Websocket üzenetek JSON sorosított objektumok, minden üzenetnek van
 \emph{típusa}, illetve valamilyen \emph{payload}-ja, ez tartalmazza az üzenethez
-esetlegesen tartozó kiegészítő információkat.
+esetlegesen tartozó kiegészítő információkat. Az üzenet típusa felsorolt típus (\emph{enum}), ezt azonban a JSON szintaktika (illetve a JavaScript nyelv) nem támogatja, így kerülőmegoldásként azokat stringekként reprezentálom. Ekkor fennáll a veszélye annak, hogy a kliens és a szerver definíció különböznek, ennek elkerülésének érdekében egy közös definíciós fájlt használtam, ebben vannak definiálva a lehetséges üzenettípusok, így biztosak lehetünk benne, hogy a két fél azonos szótárral dolgozik.
+
+A módszer előnye, hogy a reprezentációt bármikor módosítani lehet, így adott esetben kompaktabb reprezentációt is lehet nekik adni (pl. más nyelvek belső reprezentációjához hasonlóan egyszerű számokkal), ezzel is csökkentve az üzenetek által igényelt sávszélességet. Fejlesztés közben azonban fontosabbnak éreztem, hogy az üzenetek ránézésre is követhetőek legyenek, így ott olvasható, szöveges reprezentációt használtam.
 
 \subsubsection{Űrhajóvezérlés}
 
+Az űrhajók navigációját közvetlenül a hajtóművek szabályozásával lehet megoldani, így az üzenetben csak meg kell címezni a megfelelő hajtóművet, illetve a kívánt tolóerőt egy normalizált 0-1 skálán. A címzés a hajó azonosítója, illetve a hajtómű indexe alapján történik.
+
+\begin{js}
+  // példa
+\end{js}
+
 \subsubsection{Fegyvervezérlés}
 
-\subsubsection{Szerver üzenetek}
+A fegyverek hasonló elven működnek, elgendő pusztán a megfelelő fegyver megcímzésre.
+
+\begin{js}
+  // példa
+\end{js}
+
+\subsubsection{Játékos hozzáadása}
+
+A játékos hozzáadásához elegendő a játékos nevét megadni, ez egyedien azonosítja a játékost.
+
+\begin{js}
+  // példa
+\end{js}
+
+\subsection{Játékos eltávolítása}
+
+Ha a játékos elhagyja a játékot, erről értesülnie kell a többi játékosnak is, erre szolgál ez az üzenet, a végrehajtás a játékos neve alapján történik.
+
+\begin{js}
+  // példa
+\end{js}
+
+\subsection{Űrhajó hozzáadása}
+
+A játéktérhez egy új űrhajót adhatunk hozzá, ehhez szükség van a tulajdonos játékosra (az azonosítójára), az űrhajó típusára, illetve az űrhajó kezdőállapotára, pl. a poziciójára, illetve orientációjára.
+
+\begin{js}
+  // példa
+\end{js}
+
+A játékos eltávolításával ellentétben az űrhajók feltakarítása automatikus, ha egy űrhajó gazdátlanná válik, automatikusan eltűnik.
 
 \section{Fizikai szimulációs modell}
 

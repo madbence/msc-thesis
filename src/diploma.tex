@@ -9,6 +9,7 @@
 \usepackage[top=25mm,right=25mm,bottom=25mm,left=35mm]{geometry}
 \usepackage{lastpage}
 
+\def\magyarOptions{defaults=prettiest,active=none,shorthandcs=none}
 \usepackage[hungarian,english]{babel}
 
 \usepackage{sectsty}
@@ -80,12 +81,11 @@
 
 \begin{document}
 \addtocontents{toc}{\protect\setstretch{0.9}}
-\selectlanguage{hungarian}
 \pagenumbering{arabic}
 \include{titlepage}
 \tableofcontents\vfill
 \include{declaration}
-\include{abstract}
+% \include{abstract}
 \include{introduction}
 \include{chapter1}
 \include{chapter2}
