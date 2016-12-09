@@ -2,37 +2,76 @@
 
 \section{A játék}
 
+Mielőtt a tervezésnek nekiálltam volna, a feladatkiírás alapján megvizsgáltam a
+piacon jelenleg elérhető, hasonló jellegű játékokat (pl. agar.io, slither.io), a
+játék végleges szabályait ezek figyelembevételével alakítottam ki, illetve a
+lehetőségekhez mérten próbáltam utána járni az általuk alkalmazott technikai
+megoldásoknak is.  Itt a lehetőségeim rendkívül korlátozottak voltak, hiszen a
+vizsgált szoftverek nem voltak nyílt forráskódúak.
+
+\subsection{Specifikáció}
+
 A játékban tetszőleges számú játékos vesz részt, ahol minden játékos egy űrhajót
 irányít egy két dimenziós, potenciálisan végtelen nagy játéktéren. A játék célja
 minél több pont összegyűjtése, amit másik játékosok űrhajójának
-megsemmisítésével lehet szerezni, amihez az űrhajókra szerelt fegyvereket lehet
-használni. TODO fizika
+megsemmisítésével lehet szerezni, ehhez pedig az űrhajókon lévő fegyvereket
+lehet használni.
 
-A játékmenet élvezetesebbé tételéhez azonban megszorítások vannak a játékra:
+A játék igyekszik a newtoni fizika szabályait betartani, azaz az űrhajókon lévő
+hajtóművek forgatónyomatékot és erőt fejtenek ki az űrhajón. A játékos
+alapvetően a navigációt a hajtóművek toló erejének szabályozásával tudják
+végrehajtani, ez azonban meglepően nehéz. Így a játék lehetőséget ad egyedi
+vezérlés beprogramozására, azaz a vezérlés scriptelhető. Az így készített
+,,fedélzeti számítógép" minden adathoz hozzáfér, amihez maga a játékos is, így
+lehetőség van az egyszerű navigációs szubrutinok mellett komplex műveletek
+végrehajtására is, sőt akár teljesen autonóm működés is megvalósítható.
+
+A fenti specifikáció mellett az alábbi megszorításokat alkalmaztam:
 
 \begin{itemize}
-  \item A játékosok száma maximalizálva van (TODO), hogy az ebből adódó
-    esetleges teljesítményproblémákat megelőzzem. Hogy a játék mégse legyen
-    ilyen korlátozott, a játék képes több \emph{szoba} elindítására is, így a
-    szerver egy nagyon komplex játék helyett több kisebb létszámú szobát kezel.
+  \item A játékosok száma maximalizálva van, hogy az ebből adódó esetleges
+    teljesítményproblémákat megelőzzem. Hogy a játék mégse legyen ilyen
+    korlátozott, a játék képes több \emph{szoba} elindítására is, így a szerver
+    egy nagyon komplex játék helyett több kisebb létszámú szobát kezel.
   \item A játéktér mérete limitálva van, ezen túllépve a játékos először
-    figyelmeztetés kap, majd az űrhajója megsemmisül. Ezzel a játék izgalmasabbá
-    válik, hiszen a felhasználók könnyebben megtalálhatják egymást
+    figyelmeztetést kap, majd az űrhajója megsemmisül. Ezzel a játék
+    izgalmasabbá válik, hiszen a felhasználók könnyebben megtalálhatják egymást.
   \item A játékban elérhető sebesség korlátozva van, így nem lehet korlátlanul
-    nagy sebességet elérni (TODO)
+    nagy sebességeket elérni. A fizikai modell alapvetően ezt nem tiltaná, de a
+    korlátos játéktér miatt ez amúgy sem célravezető, így inkább mesterséges
+    limittel előztem meg a problémát.
+\end{itemize}
 
 \section{Architektúra}
 
 Az alkalmazás alapvetően két szoftverkomponensből áll, egy kliens oldali
-JavaScript alapú Single Page Application-ből, illetve egy szintén JS alapú
-szerver alkalmazásból.  A kliens egy minimális HTML kódba lett beágyazva, a
-böngészőbe ezt a fájlt betöltve (azaz a játék oldalára ellátogatva) elindul az
-alkalmazás, automatikusan csatlakozik a szerverre, készen áll a játékra.  A
-szerver egy HTTP és egy Websocket interfésszel rendelkezik, előbbi felelős
-kliens számára szükséges állományok kiszolgálásáért (JS, CSS állományok és
-képek), utóbbira pedig a játék tényleges lebonyolításáért felelős.
+JavaScript alapú Single Page Application-ből, illetve egy szintén JS alapú,
+Node.JS felett futó szerver alkalmazásból.  A kliens egy minimális HTML kódba
+van beágyazva, a böngészőbe ezt a fájlt betöltve (azaz a játék oldalára
+ellátogatva) elindul az alkalmazás, automatikusan csatlakozik a szerverre,
+készen áll a játékra.
 
 \section{Szerver oldali megvalósítás}
+
+A szerver alkalmazás egy \texttt{koa} alapú  HTTP webszerverből, és egy egyszerű
+Websocket szerverből áll. A HTTP interfész fogadja az új játékosok
+regisztrációit, illetve elvégzi az azonosításukat, másodlagosan pedig a böngésző
+számára szükséges állományokat szolgálja ki. Erre csak fejlesztés közben van
+szükség, \emph{production} környezetben ennek részleteit \aref{sec:nginx}.
+fejezet tárgyalja.
+
+\subsection{Adatbázis}
+
+Node.JS környezetben különösen népszerűek a NoSQL megoldások, pl. a
+MongoDB\cite{mongo}, hiszen képes közvetlenül JavaScript objektumokat tárolni,
+azokban hatékonyan keresni. A játék implementációjához azonban én a hagyományos
+relációs adatbázisoknál maradtam, mivel a tárolt adatok felépítése nem igényli a
+komplex, több szintű objektumok tárolását.
+
+A konkrét választás végül a PostgreSQL\cite{postgres} rendszerre esett.
+Alternatíva lehetett volna a MySQL rendszer, azonban azzal korábbi munkáim során
+már foglalkoztam, és mindenképpen szerettem volna megismerkedni az
+alternatíváival.
 
 \subsection{Autentikáció}
 
@@ -40,10 +79,10 @@ Egy olyan rendszernél, melyben szükség van autentikációra, különösen kri
 biztonságosság kérdése. A probléma megoldásánál figyelembe kell vennünk, hogy a
 számítógépek számítása kapacitása még mindig exponenciális növekedést mutat
 annak ellenére, hogy az órajelek már a szilícium-alapú chipek fizikai
-korlátainál vannak, azaz a gyorsulás már inkább az egyre több párhuzamosan
-dolgozó számítási egységnek köszönhető.
+korlátaiknál vannak\cite{moore}, azaz a gyorsulás már inkább az egyre több
+párhuzamosan dolgozó számítási egységnek köszönhető.
 
-A biztonságos adattároláshoz szükséges, hogy a felhasználók jelszavait ne
+A biztonságos adattároláshoz szükséges, hogy a felhasználók jelszavát ne
 közvetlenül tároljuk, hanem olyan formában, hogy abból egy esetleges támadás
 esetén semmiképpen ne lehessen visszafejteni az eredeti jelszót.
 
@@ -55,7 +94,7 @@ A transzformációval szemben támasztott követelmények:
   \item Ne legyen invertálható, azaz ne lehessen a $h(x)$ hash alapján az $x$
     értékét könnyedén megmondani.
   \item Két ugyanolyan jelszó esetén se legyen ugyanaz a kimenet, hiszen ez egy
-    kiszivárgott jelszó esetén az összes többi ugyanolyan jelszót is leleplezi.
+    kiszivárgott jelszó esetén az összes többi ugyanolyan jelszót is leleplezné.
   \item Legyen kellően lassan számolható. Azaz paraméterként tudjuk állítani az
     elvárt számítási kapacitást is. Bár ezzel a feltétellel saját magunknak is
     plusz munkát okozunk, a feltételezésünk az, hogy a felhasználók jelszavas
@@ -70,20 +109,20 @@ hozzáfűzünk a hashelés előtt. A salt értéke egy tetszőleges véletlenül
 érték, a nem szükséges titkosítva tárolni.
 
 Az utolsó pont megoldására (így a szerveren történő autentikációra) egy ún.
-KDF-et (\emph{key derivation function}) használtam. Az ilyen függvények képsek
+KDF-et (\emph{key derivation function}) használtam. Az ilyen függvények képesek
 \emph{key streching}-re, azaz paraméterként megadhatunk egy iterációs számot,
 amivel a függvény futását lassíthatjuk (a magasabb iterációs szám eredményezi a
 lassabb futást).
 
-Az elkészült alkalmazásban a \texttt{pbkdf2} algoritmust használtam,
-a szeveren a felhasználók jelszavait pedig egy sorosított JSON objektumként tároltam,
-ami minden szükséges paramétert tartalmaz a validációhoz. Így pl. az
-\emph{almafa} jelszó egyik lehetséges tárolási formátuma az adatbázisban
+Az elkészült alkalmazásban a \texttt{pbkdf2} algoritmust használtam, a szerveren
+a felhasználók jelszavait pedig egy sorosított JSON objektumként tároltam, ami
+minden szükséges paramétert tartalmaz a validációhoz. Így pl. az \emph{almafa}
+jelszó egyik lehetséges tárolási formátuma az adatbázisban
 
 \begin{js}
 {
-  "hash":"4bofZYTh+TIeprLIisByLaB7BvZ8FcmqvyRIyDrmmCWDT97f60TO1qgYRwexc...",
-  "salt":"QqyMsCFXo5A9L2apbyzJaR3cxAcgPdTBg6olfZW0Q/XiTWOVREXBqhKK2++/c...",
+  "hash":"4bofZYTh+TIeprLIisByLaB7BvZ8FcmqvyRIyDrmmCWDT97fwexc...",
+  "salt":"QqyMsCFXo5A9L2apbyzJaR3cxAcgPdTBg6olfZW0Q/XiTWOV++/c...",
   "iterations":100000,
   "len":128,
   "digest":"sha512"
@@ -92,7 +131,7 @@ ami minden szükséges paramétert tartalmaz a validációhoz. Így pl. az
 
 Az iterációk száma így folyamatosan szabályozható, akár a regisztráció idejének
 függvényében módosítható, illetve a jelszavak akár minden belépésnél
-frissíthetőek az adatbázisban, így azok mindig kellően nagy iterációs
+frissíthetők az adatbázisban, így azok mindig kellően nagy iterációs
 paraméterrel fognak rendelkezni.
 
 \subsection{Munkamenetkezelés}
@@ -106,7 +145,7 @@ az azonosítóhoz tartozó munkamenet-objektumot beolvassuk, illetve azt
 módosítjuk.
 
 Ezzel szemben az én megoldásom nem igényli az adatok szerveroldali tárolását,
-így az architektúra sokkal egyszerűbb. A munkamenetkezelás továbbra is
+így az architektúra sokkal egyszerűbb. A munkamenetkezelés továbbra is
 cookie-alapon történik, azonban az egész munkamenet objektum ebben a sütiben
 van eltárolva.
 
@@ -119,8 +158,9 @@ tartalmát megváltoztatni), illetve biztosak lehetünk benne, hogy a sütit mi
 állítottuk ki.
 
 Az elkészült szoftverben a JWT (\emph{json web tokens}) implementációját
-használtam, ez támogatja a fent leírt eljárást, illetve más egyebeket is (pl.
-képes az adat titkosítására is, én azonban ezt nem tartottam fontosnak).
+használtam, ez támogatja a fent leírt eljárást, illetve más egyebeket is, pl.
+képes az adat titkosítására is, én azonban ezt nem tartottam fontosnak, mert a
+munkamenet szenzitív adatokat nem kezel.
 
 \begin{js}
 {
@@ -140,11 +180,54 @@ x--ftgJrZBR7ASBWv64OUOB59jaQ905rzlncCG6p7-Q
 
 \section{Kliens oldali megvalósítás}
 
-A kliens egy Single Page Application, azaz a hagyományos HTML alapú oldalakkal szemben, ahol minden egyes alkalmazásképernyő egy új HTTP kérés-válasz ciklus jelent, itt erre pusztán egyszer van szükség, minden további interakciót a futtatott JavaScript kód kezel le, annak a feladata a különböző grafikus komponensek megjelenítése, illetve szerverrel történő kommunikáció.
+A kliens egy Single Page Application, azaz a hagyományos HTML alapú oldalakkal
+szemben, ahol minden egyes alkalmazásképernyő egy új HTTP kérés-válasz ciklus
+jelent, itt erre pusztán egyszer van szükség, minden további interakciót a
+futtatott JavaScript kód kezel le, annak a feladata a különböző grafikus
+komponensek megjelenítése, illetve szerverrel történő kommunikáció.
 
 \subsection{Felhasználói felület}
 
+A felhasználói felület két nagy részre bontható: egy virtual dom alapú
+hagyományos böngészős felületre, illetve egy WebGL-alapú játékfelületre.
+
+Az előbbi felelős a komplett alkalmazás állapotmenedzsmentjéért, azaz kezeli a
+különböző képernyők közti navigációkat, illetve a kezdőképernyőn történő
+regisztrációs/beléptető felület megjelenítéséért.
+
+A navigációhoz a History API-t\cite{history} használtam, mely képes a böngésző
+címsávjában lévő URL-t módosítani az oldal újratöltése nélkül, illetve megadja a
+lehetőséget, hogy a böngésző előre/vissza gombjaival is képesek legyünk a
+navigációra, ezzel is növelve a felhasználói élményt.
+
+A felület megvalósításához nem \aref{sec:react} fejezetben bemutatott React
+könyvtárat, hanem az Inferno\cite{inferno}-t használtam, mely tulajdonképpen egy
+React-kompatibilis API-t nyújt, azonban az implementációja jóval letisztultabb,
+ezáltal gyorsabb\cite{bench}, ezt még a React fejlesztői is
+elismerték\cite{reactrewrite}.
+
 \subsection{Grafika megvalósítás}
+
+A játék egy teljes képernyőt kitöltő WebGL vásznat használ, azaz teljes
+képernyős üzemmódban a natív platformokhoz hasonló élményt próbál nyújtani, ezt
+mutatja be \aref{fig:screenshot1}. ábra. A shaderek kezelésére a
+\texttt{gl-shader} modult használtam, ez képes a GLSL kód alapján a WebGL
+kontextus felkonfigurálására, azaz automatikusan beállítja a shaderek
+paramétereit: a vertexek értelmezéséhez szükséges \texttt{attribute} változók,
+illetve a \texttt{uniform} változók kötését.
+
+A textúrák betöltése JavaScript segítségével történik, egyszerű \texttt{Image}
+objektumok segítségével, amit \texttt{.texImage2D} metódus segítségével töltünk
+be a WebGL kontextusba. Magukat a textúrákat az OpenGameArt ingyenes textúrái
+között találtam (\texttt{http://opengameart.org/}).
+
+A szöveges tartalom megjelenítése egy fájó pont volt számomra, a WebGL-ben ez
+viszonylag körülményes, így kerülőmegoldásként a WebGL vászna fölé egy másikat
+is helyeztem, amire a Canvas API segítségével rajzoltam ki szöveges tartalmat:
+ennek segítségével jelenítettem meg az egyes játékosok pontjait.
+
+\fig{width=0.6\textwidth}{screenshot-1.png}{Képernyőkép a WebGL-alapú
+  grafikáról}{screenshot1}
 
 \subsection{Játéklogika}
 
@@ -156,30 +239,107 @@ játék állapotát a \texttt{state} mezőjében, illetve rendelkezik egy
 \texttt{handle(action: Action): void} metódussal.
 
 Fontos, hogy a játék állapotát reprezentálható objektum \emph{immutable}, azaz
-nem módosítható. Helyette kötelezően egy \emph{új} állapotot kell létrehoznia.
-Ez biztosítja, hogy bármelyik időpontban \emph{snapshotot} készíthessünk a játék
-állapotáról, ami a lokális predikció működéséhez szükséges.
+nem módosítható. Helyette az állapot megváltozása esetén kötelezően egy
+\emph{új} állapotot kell létrehozni.  Ez biztosítja, hogy bármelyik időpontban
+\emph{snapshotot} készíthessünk a játék állapotáról, ami a lokális predikció
+működéséhez szükséges. A predikció részleteivel \aref{sec:prediction}. fejezet
+foglalkozik.
 
 A \texttt{GameRunner} mentes minden külső függőségtől, működéséhez fontos, hogy
 a \emph{handle} metódus csak a bemenő paramétertől, illetve a saját belső
-állapotától függjön, tehát ennek a két adatnak kell minden szükséges információt
-tartalmaznia. Mivel a játék nem használ \emph{ütemező} üzeneteket, így minden
-végrehajtandó akció mellé csatolni kell a hozzá tartozó időbélyeget is. Ezeknek
-az információknak a tudatában elő lehet állítani a játék állapotát, amire már a
-paraméterben kapott művelet is hatással van. A végrehajtás két lépésben
-történik:
+állapotától függjön, tehát ennek a két adatnak kell minden (az új állapot
+létrehozásához) szükséges információt tartalmaznia. Mivel a játék nem használ
+\emph{ütemező} üzeneteket, így minden végrehajtandó akció mellé csatolni kell a
+hozzá tartozó időbélyeget is. Ezeknek az információknak a tudatában elő lehet
+állítani a játék állapotát, amire már a paraméterben kapott művelet is hatással
+van. A végrehajtás két lépésben történik:
 
 \begin{enumerate}
-  \item Az akció időbélyege, és az aktuális időbélyeg alapján végrehajtjuk a fizikai szimulációt, azaz a különböző objektumokat adott időegységekkel léptetjük, amíg el nem érjük a kívánt időpontot. Itt történik meg minden determinisztikus játéklogika, azaz az ütközéskezelés, pontok számolása is.
-  \item Végrehajtjuk a tényleges akciót (pl. új lövedéket helyezünk el a játéktéren a lövés hatására)
+  \item Az akció időbélyege, és az aktuális időbélyeg alapján végrehajtjuk a
+    fizikai szimulációt, azaz a különböző objektumokat adott időegységekkel
+    léptetjük, amíg el nem érjük a kívánt időpontot. Itt történik meg minden
+    determinisztikus játéklogika, azaz az ütközéskezelés, pontok számolása is.
+  \item Végrehajtjuk a tényleges akciót (pl. új lövedéket helyezünk el a
+    játéktéren a lövés akció hatására)
 \end{enumerate}
 
 A \texttt{GameRunner} mivel nem rendelkezik külső függőségekkel, így mind
 kliens, mind szerveroldalon futhat. A kliens és a szerver alkalmazások csak
-minimálisan kommunikálnak egymással, így erre szükség is van, a játék minden
-csatlakozott kliensen és a szerveren egyeránt párhuzamosan fut, és pusztán a
-szinkronizációhoz szükséges adatokat adják át egymásnak. A lehetséges
-üzenettípusokkal \aref{sec:messages}. fejezet foglalkozik.
+minimálisan kommunikálnak egymással, így mind a kliensen, mint a szerveren
+szükséges az önálló játékpéldány futása. A lehetséges üzenettípusokkal
+\aref{sec:messages}. fejezet foglalkozik.
+
+\subsection{A játék objektumgráfja}\label{sec:gamestate}
+
+A játék állapota egy hagyományos JavaScript \texttt{Object}, így bármikor JSON
+sorosítható (és persze parse-olható), a tényleges struktúrája a FlowType
+segítségével jól leírható (\texttt{State} típus):
+
+\begin{js}
+type Vec = [number, number];
+
+type Thruster = {
+  pos: Vec, ori: number, thrust: number,
+};
+
+type ShipType = {
+  hull: number,
+  thrusters: Thruster[],
+};
+
+type Ship = {
+  id: number,
+  type: number,
+  owner: number,
+  pos: Vec, vel: Vec, acc: Vec,
+  ori: number, rot: number, tor: number,
+  health: number,
+  thrusters: number[],
+};
+
+type Projectile = {
+  owner: number,
+  pos: Vec, vel: Vec, ori: number, t: number,
+};
+
+type Player = {
+  name: string,
+  id: number,
+  score: number,
+};
+
+type State = {
+  ships: Ship[],
+  projectiles: Projectile[],
+  players: Player[],
+  t: number,
+  dt: number,
+  ids: number,
+};
+\end{js}
+
+A játékállapot tartalmazza az aktuális játékosok listáját: a játékosok egy
+névvel, egy pontszámmal, és egy belső azonosítóval rendelkeznek, melyet a
+\texttt{State::ids} változó segítségével generál a játék (egyszerűen egy növekvő
+számsor szerint osztjuk ki az azonosítókat).
+
+Az egyes lövedékeket szintén el kell tárolnunk az állapotban, ehhez szükséges
+azoknak a pozíciója, iránya, illetve sebessége. Mivel nem szeretnénk, ha a
+játékos saját magát is meg tudja sebesíteni, így tároljuk a tulajdonos játékos
+belső azonosítóját. A másik indok a tulajdonos tárolására, hogy az űrhajók
+megsemmisülését okozó lövedék gazdáját ismernünk kell a pontok számolásához.
+
+Végül szükség van az egyes űrhajók adataira is, ez a fizikai jellemzőket
+(pozíció, sebesség, gyorsulás, orientáció, forgási sebesség, forgatónyomaték),
+illetve a játékszabályok szempontjából fontos értékeket (a hajó pajzsának
+állapota, illetve a tulajdonos játékos azonosítója) tarkarja. A navigációhoz el
+kell tárolni az egyes hajtóművek állapotát is, ez minden hajtóműhöz egy $0$ és
+$1$ közötti erősséget jelent. Ahhoz, hogy ezeket az értékeket értelmezzük,
+szükség van a hajó típusára is, ez a típusának az indexét jelenti, amit a játék
+állapotán kívül tárolunk, globális értéknek tekintjük. Ez a típus mutatja meg
+hajó maximális védelmét, illetve adja meg az egyes hajtóművek leírását, azaz a
+pozíciójukat, irányukat a hajó középpontjához képest, illetve a maximális
+tolóerejüket.
 
 \section{Kliens-szerver kommunikáció}
 
@@ -190,7 +350,9 @@ azaz meg kellett keresnem azt a minimális mennyiségű üzenetet, ami feltétle
 szükséges a kliensek (és a szerver) közti szinkronizációhoz.
 
 Ha feltételezzük, hogy a rendszer determinisztikus, akkor azonos kezdőállapotok
-mellett (és külső események nélkül) nincs szükség egyáltalán szinkronizációra.
+mellett (és külső események nélkül) nincs szükség egyáltalán szinkronizációra
+(hiszen mindegyik példány ugyanazokon az állapotokon megy keresztül a
+determinisztikus működés miatt).
 Könnyen beláthatjuk, hogy a szinkronizáció pont ezek miatt a külső események
 miatt szükséges. Ezek az események a játékosoktól (vagy ágensektől) származó
 inputok, illetve a szerver által generált események, tehát a szinkronizációhoz
@@ -198,73 +360,157 @@ elegendő ezeket az eseményeket eljuttatni mindenkihez.
 
 A módszer másik előnye, hogy ezeket az eseményeket felvéve (azoknak az
 időzítésével együtt) rekonstruálni tudjuk a rendszer állapotát tetszőleges
-időpillanatban, így pl. az egyes játékok visszanézhetők utólag.
+időpillanatban, így pl. az egyes játékok visszanézhetők utólag. Ez a funkció
+azonban sajnos az idő hiánya miatt nem valósult már meg.
 
 \subsection{Üzenetek}\label{sec:messages}
 
 A Websocket üzenetek JSON sorosított objektumok, minden üzenetnek van
 \emph{típusa}, illetve valamilyen \emph{payload}-ja, ez tartalmazza az üzenethez
-esetlegesen tartozó kiegészítő információkat. Az üzenet típusa felsorolt típus (\emph{enum}), ezt azonban a JSON szintaktika (illetve a JavaScript nyelv) nem támogatja, így kerülőmegoldásként azokat stringekként reprezentálom. Ekkor fennáll a veszélye annak, hogy a kliens és a szerver definíció különböznek, ennek elkerülésének érdekében egy közös definíciós fájlt használtam, ebben vannak definiálva a lehetséges üzenettípusok, így biztosak lehetünk benne, hogy a két fél azonos szótárral dolgozik.
+esetlegesen tartozó kiegészítő információkat. Az üzenet típusa felsorolt típus
+(\emph{enum}), ezt azonban a JSON szintaktika (illetve a JavaScript nyelv) nem
+támogatja, így kerülőmegoldásként azokat stringekként reprezentáltam. Ekkor
+persze fennáll a veszélye annak, hogy a kliens és a szerver definíciói
+különböznek, ennek elkerülése érdekében egy közös definíciós fájlt használtam,
+ebben vannak definiálva a lehetséges üzenettípusok, így biztosak lehetünk benne,
+hogy a két fél azonos szótárral dolgozik.
 
-A módszer előnye, hogy a reprezentációt bármikor módosítani lehet, így adott esetben kompaktabb reprezentációt is lehet nekik adni (pl. más nyelvek belső reprezentációjához hasonlóan egyszerű számokkal), ezzel is csökkentve az üzenetek által igényelt sávszélességet. Fejlesztés közben azonban fontosabbnak éreztem, hogy az üzenetek ránézésre is követhetőek legyenek, így ott olvasható, szöveges reprezentációt használtam.
+A módszer előnye, hogy a reprezentációt bármikor módosítani lehet, így adott
+esetben kompaktabb reprezentációt is lehet nekik adni (pl. más nyelvek belső
+reprezentációjához hasonlóan egyszerű számokkal helyettesíteni a típust), ezzel
+is csökkentve az üzenetek által igényelt sávszélességet. Fejlesztés közben
+azonban fontosabbnak éreztem, hogy az üzenetek ránézésre is követhetőek
+legyenek, így ott olvasható, szöveges reprezentációt használtam.
+
+Az ütemezés közvetlenül a végrehajtott akciókon keresztül történik, így szükség
+van az időbélyegek eltárolására is, ez a játék kezdete óta eltelt időt jelenti.
 
 \subsubsection{Űrhajóvezérlés}
 
-Az űrhajók navigációját közvetlenül a hajtóművek szabályozásával lehet megoldani, így az üzenetben csak meg kell címezni a megfelelő hajtóművet, illetve a kívánt tolóerőt egy normalizált 0-1 skálán. A címzés a hajó azonosítója, illetve a hajtómű indexe alapján történik.
+Az űrhajók navigációját közvetlenül a hajtóművek szabályozásával lehet
+megoldani, így az üzenetben csak meg kell címezni a megfelelő hajtóművet,
+illetve a kívánt tolóerőt egy normalizált 0-1 skálán. A címzés a hajó
+azonosítója, illetve a hajtómű indexe alapján történik.
 
 \begin{js}
-  // példa
+  {
+    type: 'game:thrust',
+    id: number,
+    index: number,
+    strength: number,
+    t: number,
+  }
 \end{js}
 
 \subsubsection{Fegyvervezérlés}
 
-A fegyverek hasonló elven működnek, elgendő pusztán a megfelelő fegyver megcímzésre.
+A fegyverek hasonló elven működnek, elegendő pusztán a megfelelő hajó megcímzése.
 
 \begin{js}
-  // példa
+  {
+    type: 'game:shoot',
+    id: number,
+    t: number,
+  }
 \end{js}
 
 \subsubsection{Játékos hozzáadása}
 
-A játékos hozzáadásához elegendő a játékos nevét megadni, ez egyedien azonosítja a játékost.
+A játékos hozzáadásához elegendő a játékos nevét megadni, ez egyedien azonosítja
+a játékost.
 
 \begin{js}
-  // példa
+  {
+    type: 'game:add-player',
+    name: strig,
+    t: number,
+  }
 \end{js}
 
-\subsection{Játékos eltávolítása}
+\subsubsection{Játékos eltávolítása}
 
-Ha a játékos elhagyja a játékot, erről értesülnie kell a többi játékosnak is, erre szolgál ez az üzenet, a végrehajtás a játékos neve alapján történik.
+Ha a játékos elhagyja a játékot, arról értesülnie kell a többi játékosnak is,
+erre szolgál ez az üzenet, a címzése a játékos azonosítója alapján történik.
 
 \begin{js}
-  // példa
+  {
+    type: 'game:remove-player',
+    id: number,
+    t: number,
+  }
 \end{js}
 
-\subsection{Űrhajó hozzáadása}
+\subsubsection{Űrhajó hozzáadása}
 
-A játéktérhez egy új űrhajót adhatunk hozzá, ehhez szükség van a tulajdonos játékosra (az azonosítójára), az űrhajó típusára, illetve az űrhajó kezdőállapotára, pl. a poziciójára, illetve orientációjára.
+A játéktérhez egy új űrhajót adhatunk hozzá, ehhez szükség van a tulajdonos
+játékosra (az azonosítójára), az űrhajó típusára, illetve az űrhajó
+kezdőállapotára, pl. a pozíciójára, illetve orientációjára.
 
 \begin{js}
-  // példa
+  {
+    type: 'game:add-ship',
+    ship: number,
+    owner: number,
+    pos: Vec,
+    ori: number,
+    t: number,
+  }
 \end{js}
 
-A játékos eltávolításával ellentétben az űrhajók feltakarítása automatikus, ha egy űrhajó gazdátlanná válik, automatikusan eltűnik.
+A játékos eltávolításával ellentétben az űrhajók feltakarítása automatikus, ha
+egy űrhajó gazdátlanná válik, automatikusan eltűnik.
+
+\subsection{Lokális predikció}\label{sec:prediction}
+
+A játék konzisztenciájáért a szerver a felelős, azaz a klienseknek a szerver
+állapotát kell replikálniuk. Azonban a két fél közötti kommunikáció késleltetése
+nem elhanyagolható, így ha szigorúan a szerver állapotát replikálnánk, az
+érehető ,,lag"-ot okozna a játékban, azaz a felhasználó akár több száz
+milliszekundumot is kénytelen lenne várni, mire a játék reagálna a leütött
+billentyűire.
+
+A fenti probléma elfedésére a kliens működését úgy módosítottam, hogy az képes
+legyen \emph{lokális predikcióra}, azaz a kliens nem várja meg a szerver
+válaszát, hanem automatikusan sikeresnek tekinti azt. Ezt a modellt mutatja be
+sematikusan \aref{fig:prediction}. ábra.
+
+\fig{width=\textwidth}{prediction.eps}{A lokális predikció modellje}{prediction}
+
+A kliensek mindig rendelkeznek a szerver legutolsó ismert állapotával, ez a
+\texttt{snapshot}, illetve van egy folyamatosan változó lokális állapotuk is, ez
+a \texttt{state}. Ezenk kívül nyilvántartjuk a játékos által végrehajtott, ám
+szerver által még nem visszaigazolt akciókat, az akció keletkezésének
+időpontjával együtt (\texttt{queue}). A predikció működéséhez szükséges két
+lényeges pont:
+
+\begin{itemize}
+  \item Minden új akció létrejöttekor hozzáfűzzük azt a \texttt{queue}-hoz,
+    illetve végrehajtjuk azt a lokális állapoton is (\texttt{state}).
+  \item Minden szervertől érkező esemény hatására frissítjük a
+    \texttt{snapshotot}, a \texttt{queue}-ból eldobjuk azokat az eseményeket,
+    amelyek időbélyege az érkezett eseménynél kisebb. Ezt azért tehetjük meg,
+    mert a WebSocket az üzenetek sorrendjét nem változtatja meg, azaz ha egy
+    későbbi eseményről kapunk visszaigazolást, akkor egy korábbi eseményről már
+    biztosan nem fogunk.
+  \item A \texttt{queue} megmaradt elemeit sorban végrehajtjuk az új
+    \texttt{snapshot}-on, ezzel megkapjuk az új lokális \texttt{state}-et.
+\end{itemize}
 
 \section{Fizikai szimulációs modell}
 
 A feladatban kitűzött egyik sarokpont a minél pontosabb fizikai modell
 használata volt, így igyekeztem olyan kompromisszumos megoldást találni, amely
-kellően pontos, ám figyelembe veszi, hogy a szimulációt böngészőben, akár
-limitált erőforrásokkal kell futtatni.
+kellően pontos, ám figyelembe veszi, hogy a szimulációt böngészőben, limitált
+erőforrásokkal kell futtatni.
 
 A szimulációnak folyamatosnak kell lennie, ez optimális esetben 60 képkockát
 jelent másodpercenként, azaz az egész szimulációnak kevesebb, mint 17
-ezredmásoperc alatt le kell futnia.  Ha figyelembe vesszük, hogy itt akár
+ezredmásodperc alatt le kell futnia.  Ha figyelembe vesszük, hogy itt akár
 egyszerre több száz objektum viselkedését kell számon tartanunk, akkor érdemes
 nagyon okosan megválasztanunk a szimulációs modellünket.
 
 Az űrhajókat a két dimenziós síkon lévő merev kiterjedt testekkel modelleztem, a
-testek mozgását (az elmozdulását illetve orientiációját) pedig a rá ható
+testek mozgását (az elmozdulását illetve orientációját) pedig a rá ható
 tetszőleges $n$ számú erőkkel írtam le. Ezekből az $F_i$ erőkből kiszámolható a
 testre ható $F$ eredő erő, illetve $M$ forgatónyomaték.
 
@@ -294,8 +540,8 @@ függvények, így $r(t)$ és $\theta(t)$ csak közelítő módszerekkel számol
 hiszen a rendelkezésre álló néhány ezredmásodperc egészen biztosan nem elegendő,
 hogy szimbolikusan oldjuk meg a feladatot (ha egyáltalán meg lehet).
 
-Ha pl. feltételezünk egy gravitációs mezőt, ott a testre ható erő függ a test pozíciójától is,
-azaz egy másodrendű differenciálegyenletet kapunk.
+Ha pl. feltételezünk egy gravitációs mezőt, ott a testre ható erő függ a test
+pozíciójától is, azaz egy másodrendű differenciálegyenletet kapunk.
 
 \subsection{Euler módszer}
 
@@ -308,26 +554,171 @@ ismert $F(t)$ függvény).
   v(t + \varepsilon) \approx v(t) + \varepsilon v'(t)
 \]
 
-Azaz a sebesség változását lineárisnak tekintjük. Ha az $\varepsilon$ kellően kicsi,
-akkor ez a közelítés valóban megállja a helyét, a módszer hibája egyenesen arányos
-$\varepsilon$-nal.
+Azaz a sebesség változását lineárisnak tekintjük az eltelt $\varepsilon$ idő
+alatt. Ha az $\varepsilon$ kellően kicsi, akkor ez a közelítés valóban megállja
+a helyét, a módszer hibája egyenesen arányos $\varepsilon$-nal.
 
 Érdemes megjegyezni, hogy ha a hajóra ható erő és forgatónyomaték konstans,
-akkor az elkövetett hibánk $0$, így a sebességre és a szögsebességre pontos megoldásokat kapunk.
-Természetesen az így kapott függvények már nem konstansok, így az újabb integrálás
-már hibával fog járni.
+akkor az elkövetett hibánk $0$, így a sebességre és a szögsebességre pontos
+megoldásokat kapunk.  Természetesen az így kapott függvények már nem konstansok,
+így az újabb integrálás már hibával fog járni.
 
 Mivel a szimulációnak folyamatosnak kell lennie, így az $\varepsilon$ változót is
 kicsinek kell megválasztanunk, azaz az elkövetett hibánk kellően kicsi lesz ahhoz,
 hogy az ne legyen zavaró a játékos számára.
 
-\subsection{Runge-Kutta (RK4) módszer}
-
 \section{Programozott vezérlés}
 
-\section{Saját ágensek írása}
+Az űrhajó vezérlése billentyűzetről történik, a \texttt{W} és \texttt{S}
+billentyűkkel a sebességet lehet befolyásolni (mivel a vezérlet hajtóművek által
+kifejtett erők vektora átmegy a tömegközépponton, így forgatónyomatékot nem
+fejtenek ki), az \texttt{A} és \texttt{D} billentyűkkel a forgást lehet
+szabályozni (ezek pedig csak forgatónyomatékot fejtenek ki). A fegyver a
+\texttt{space} billentyűvel süthető el.
+
+Az irányítás közel sem intuitív, hiszen az energiamegmaradás miatt az űrhajó
+mindaddig mozgásban marad (illetve forog), amíg azt egy ellenkező irányú erővel
+ellen nem kompenzáljuk. Ezek az általános navigációs manőverek sok gyakorlást
+igényelnek, azonban nagyon könnyen automatizálhatóak, így jött a programozható
+vezérlés bevezetésének gondolata.
+
+Mivel az alkalmazás a böngészőben fut, így ezt a vezérlést is JavaScript
+segítségével valósíthatjuk meg, a játékkal való interakciót egy egyszerű API-n
+keresztül valósítottam meg:
+
+\begin{itemize}
+  \item A \texttt{GameClient} osztály egy-egy példánya egy-egy játékos
+    reprezentációja, ez ajánl ki néhány használható metódust
+    (\texttt{.thrust(index, strength)} illetve \texttt{.shoot()}), ezek
+    segítségével képes a játékos irányítani az űrhajóját.
+  \item A játék aktuális állapota (az egyes űrhajók helyzete, stb.) bármikor
+    elérhető \aref{sec:gamestate}. fejezetben ismertetett struktúrán keresztül.
+\end{itemize}
+
+A játékos a vezérlés kódját egy szöveges mezőben szerkesztheti, ahol teljes
+szabadságot kap. Annak érdekében, hogy a különböző programozási hibákból eredő
+problémákat elkerüljük, az itt bevitt kód egy \emph{sandbox} környezetben, egy
+WebWorker szálon fut. Így az esetleges hibás (vagy rosszindulatú) vezérlések
+miatt keletkezett pl. végtelen ciklusból is van esélyünk kilépni (új vezérlést
+feltölteni), erre egyébként nem lenne esélyünk, hiszen a saját JavaScript kódunk
+ugyanazon a szálon futna, mint maga a játék, azaz egy végtelen ciklus magát a
+játékot (a felhasználói felületet) is blokkolná.
+
+A WebWorkerrel történő kommunikáció el van rejtve, ezzel a játékosnak nem kell
+törődnie, veheti úgy, hogy a számára elérhető \texttt{GameClient} objektum
+ténylegesen végzi a vezérlést (valójában persze a felhasználó kódja csak egy
+proxy objektummal kommunikál, ami továbbítja a megjelenítő szálon futó valódi
+\texttt{GameClient} objektumnak az utasításokat).
+
+A vezérlés kódjára nincs megkötés, azonban érdemes az alábbi struktúrát követni:
+
+\begin{js}
+setInterval(() => {
+  runCustomController(client, state);
+}, 100);
+
+function runCustomController(client, state) {
+  // egyéni logika, ahol lehetőség van a client.thrust()
+  // és client.shoot() metódusok meghívására.
+}
+\end{js}
+
+A fenti kód $100$ milliszekundomonként meghívja az általunk írt vezérlőt, ahol
+tetszőleges logikát valósíthatunk meg.
+
+\section{PID-vezérlős célzás}
+
+A diplomaterv egyik célja egy alapszintű mesterséges intelligencia elkészítése
+volt, melyhez a imént felvázolt scriptelési lehetőségeket használtam fel.
+
+A tervezési szakaszban ambiciózus terveim voltak erre vonatkozólag, azonban mint
+azt tapasztaltam, egy teljesen autonóm vezérlő implementálása túl bonyolultnak
+bizonyult, így végül egy jóval egyszerűbb, de ,,okos" vezérlőt készítettem el.
+
+A vezérlő feladata, hogy a hozzá legközelebb eső űrhajót megkeresse, és
+megsemmisítse azt, azaz a hajó orientációját szabályozva a megfelelő
+időpillanatban automatikusan elsüsse a hajóra szerelt löveget.
+
+Az orientáció szabályozásához egy PID vezérlőt használtam, ehhez a \\
+\texttt{node-pid-controller} npm modult használtam fel. A program az orientáció
+hibája alapján vezérli a forgatásért felelős hajtóműveket, majd az űrhajó
+megfelelő orientációja esetén automatikusan elsüti a rászerelt fegyvert.
 
 \section{Tesztelés}
+
+A dinamikusan típusos nyelvekben a tesztelés kiemelten nagy szerepet játszik,
+hiszen minden szintaktikailag helyes program futtatható, azonban ennek az ára a
+futás idejű hibák megnövekedett száma.
+
+Mivel az alkalmazás erősen támaszkodik a FlowType-ra, így számos programhiba már
+fordítási időben kiderült, a mainstream nyelvekben megszokott
+típusellenőrzéseken felül a FlowType a \texttt{null} értékekből eredő hibákat is
+képes kiszűrni (erre a Java vagy C\# nyelvekben nincs igazán lehetőségünk), így
+a tesztelés során lehetőségem nyílt rá, hogy ténylegesen az implementált
+algoritmusok helyességét ellenőrző tesztekre koncentráljak.
+
+A választásom \aref{sec:mocha}. fejezetben bemutatott Mocha keretrendszerre
+esett, a tesztelés fókuszát pedig a játéklogikára helyeztem. Itt hozta meg a
+gyümölcsét a funkcionális programozásra építő architektúra, hiszen elegendő volt
+minden esetben a tesztelt metódusok visszatérési értékét tesztelnem, nem volt
+szükség bonyolult \emph{mock}, \emph{dummy} és egyéb tesztelési segédobjektumok
+létrehozására. Szintén kifizetődőnek bizonyult, hogy az adatstruktúráim
+hagyományos JavaScript objektumok voltak, így a egységtesztelés során nem volt
+szükség bonyolult inicializálókra, minden paramétert képes voltam objektum
+literálokkal definiálni.
+
+\subsection{Continous Integration}\label{sec:ci}
+
+A tesztelés akkor igazán hasznos, ha fejlesztési folyamat szerves részét képezi.
+A \emph{Continous Integration} (CI) módszer célja pontosan ez, a fejlesztés során
+folyamatosan biztosítja, hogy a verziókezelő rendszerben keletkezett minden
+változáskor automatikusan lefutnak a szoftverhez írt tesztek.
+
+Az alkalmazás kódjának menedzseléséhez a \texttt{git} verziókezelő
+rendszert\cite{git} használtam, illetve a kódot a \emph{GitHub}\cite{github}
+által biztosított távoli repository-ban tároltam. A GitHub számos külső CI
+szolgáltatással képes együttműködni, ilyen pl. a \emph{Travis CI}\cite{travis},
+illetve a \emph{CircleCI}\cite{circle}. Én a \emph{Travis CI} mellett döntöttem,
+leginkább a korábbi tapasztalataim alapján.
+
+A szolgáltatás minden GitHubra felküldött kódváltozásról értesül egy webhookon
+keresztül, melynek hatására lefutnak az általunk specifikált tesztek.  A Travis
+egy Linux konténert, vagy virtuális gépet biztosít számunkra attól függően, hogy
+szükségünk van-e rendszergazdai jogosultságokra a tesztek lefuttatásához.  A
+tesztkörnyezetet illetve magukat a lefuttatandó a teszteket egy \emph{YAML}
+leírófájlban adhatjuk meg, melyet az alkalmazás repository-ban kell elhelyeznünk
+(\texttt{.travis.yml} néven). Itt kell beállítanunk a kívánt környezetet,
+esetünkben ez a \texttt{node\_js}-t jelenti, illetve megadhatjuk, hogy milyen
+Node.JS verziókon szeretnénk lefuttatni a teszteket.  A rendszer automatikusan
+bekonfigurálja a futtatókörnyezetet (elérhetővé téve a megfelelő Node.JS
+verziót), majd lefuttatja a teszteket, alapesetben a verziókat szekvenciálisan
+futtatva (a szolgáltatás ezen része ingyenes, ha párhuzamosan szeretnénk több
+verziót tesztelni, a fizetős verziót kell használnunk).
+
+Mivel a fejlesztési, illetve az éles futtatókörnyezet ismert (7-es főverziójú
+Node.JS), így a teszteket csak a \emph{latest} jelzővel ellátott Node.JS
+verzióval futtattam le.
+
+A rendszer képes a beállított környezet alapján automatikusan kitalálni, hogy a
+program függőségeit hogyan lehet feltelepíteni, illetve a teszteket hogyan lehet
+lefuttatni. Ez \texttt{node\_js} esetén az \texttt{npm install} illetve
+\texttt{npm test} parancsokat jelenti. Természetesen lehetőségünk van ezeket a
+beállításokat a \texttt{.travis.yml} fájlban felülírni, azonban erre nekem volt
+szükségem a fejlesztés során.
+
+A lefuttatott tesztek eredménye alapján (a teszt sikeres, ha a teszet futtató
+parancs $0$ értékkel tért vissza, ami hagyományosan UNIX környezetben a sikeres
+lefutást jelenti\cite{bash}) egy újabb webhookon keresztül a Travis értesíti a
+GitHub rendszerét, ahol vizuális visszajelzést is kapunk a teszt eredményéről.
+
+A szolgáltatás a gyakorlatban rendkívül hasznosnak bizonyult, hiszen nem
+,,felejti el" lefuttatni a teszteket, ami manuális futtatásnál valószínűleg
+általános probléma lenne, illetve szisztematikusan képes több környezetben is
+tesztelni, ami kézi módszerekkel időigényes, repetitív folyamat. Fontos, hogy az
+általa futtatott tesztek reprodukálhatóak, azaz nem feltételezik a környezet egy
+adott állapotát, így számos olyan hibára is fényt deríthetnek, ami helyi
+teszteléskor nem feltétlenül kerül elő (pl. egy függőség feltelepítése anélkül,
+hogy az a \texttt{package.json}-ba is bekerülne).
 
 \section{Üzemeltetés}
 
@@ -341,15 +732,71 @@ ha nem is betemetésére - de annak a szűkítésére.  Így alakult ki a
 melynek célja a fejlesztők és az üzemeltetők közti szorosabb együttműködés
 támogatása.
 
-Ennek a kulturális változásnak az egyik legfontosabb aspektusa a
-\emph{Continous Delivery}, mely azt a képességet jelenti, hogy a fejleszés
-bármely pillanatában képesek vagyunk a szoftvert éles környezetben is
-beüzemelni, ellentétben a korábbi gyakorlattal, ahol ez egyáltalán nem volt
-megkövetelve, elgendő volt az ilyen problémákkal a fejlesztési ciklus
-lezárása előtt foglalkozni.
+\Aref{sec:ci}. fejezetben bemutatott Continous Integration rendszer mellett két
+szoftvert használtam az elkészült alkalmazás beüzemelésére, az \emph{nginx}-et
+illetve az \emph{Ansible}-t. Segítségükkel az alkalmazás üzembe helyezése gyors,
+és ami a legfontosabb: megismételhető, azaz szinte bármilyen, a népszerű VPS
+szolgáltatók által kínált virtuális (vagy akár fizika) gépre feltelepíthető.
 
-% Természetesen egy ilyen folyamat - ha nem automatizáljuk - nagyon bonyolult és
-% hosszadalmas is lehet. Szerencsére ezek tipikusan olyan feladatok, melyek a fejlesztés során
-% ritkán változnak, így annak elvégzését a számítógépekre bízhatjuk. Ahhoz, hogy magabiztosan helyezzünk ki éles
-% környezetbe egy alkalmazást, fontos, hogy szoftver helyességéről legyünk meggyőződve,
-% ennek egyik lehetséges módja a megfelelő tesztlefedettség ()
+Az elkészült játékot a Digital Ocean által biztosított virtuális gépen helyeztem
+üzembe, illetve a játékot a \texttt{https://spacegame.danyi.me} címen tettem
+elérhetővé.
+
+\subsection{nginx}\label{sec:nginx}
+
+Az \emph{nginx}\cite{nginx} egy általános célú \emph{reverse proxy}, illetve
+webszerver.  Éles környezetben ez látja el a statikus fájlok kiszolgálásának
+feladatát. Habár a Node.JS alapú szerver is képes erre, az \emph{nginx} jóval
+kiforrottabb megoldás, számos olyan alapvető funkciót támogat, melyet a Node.JS
+alapú társa nem (vagy adott esetben csak különböző kiegészítő modulokkal), ilyen
+pl. a megfelelő HTTP \emph{Cache} fejlécek kezelése, illetve a HTTP kérés-válasz
+párok alatt meglévő TCP kapcsolat optimális kezelése (nem nyit új kapcsolatot,
+csak ha feltétlenül szükséges).
+
+Másik előnye, hogy a szerver összeomlása esetén is válaszképes marad a szerver,
+a hibáról legalább egy HTTP 502 hibaüzenet formájában kapunk információt.
+
+Végül ez a szerver felelős a HTTP illetve WebSocket kapcsolat titkosításáért,
+melyhez a szükséges tanúsítványokat a \emph{Let's encrypt}\cite{letsencrypt}
+szolgáltatás segítségével szereztem be.
+
+Az \emph{nginx} szerepét \aref{fig:nginx}. ábra mutatja be.
+
+\fig{width=0.7\textwidth}{nginx.eps}{Az nginx szerepe az éles üzemben}{nginx}
+
+A szerver alapvetően három feladatot lát el: kiszolgálja a statikus fájlokat, illetve
+\emph{reverse proxy}-ként működik a Node.JS alkalmazás HTTP és Websocket
+interfésze előtt. Ezt a három feladatot három egyszerű direktívával tudjuk
+megadni:
+
+\begin{nginx}
+# HTTP reverse proxy a Node.JS szerverhez
+location / {
+  proxy_pass http://spacegame;
+}
+
+# Websocket reverse proxy a Node.JS szerverhez
+location /connect {
+  proxy_pass http://spacegame;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+}
+
+# Statikus fájlok kiszolgálása
+location ~* \.(js|map|jpg|css)$ {
+  root /home/picard/spacegame/assets;
+}
+\end{nginx}
+
+\subsection{ansible}\label{sec:ansible}
+
+Az szoftver üzembe helyezéséhez számos szoftver megléte szükséges, pl. szükség
+van a megfelelő verziójú Node.JS futtatókörnyezet, szükség van minden használt
+library feltelepítésére, stb. Ezek a műveletek repetitívek, így célszerű őket
+automatizálni.
+
+A probléma megoldására az \emph{Ansible}-t\cite{ansible} használtam, mely egy
+általános célú IT automatizációs eszköz, az elvégzendő feladatokat egy egyszerű
+\emph{yml} leírófájl írja le, a szoftver pedig képes azokat egy távoli gépen,
+SSH kapcsolaton keresztül végrehajtani.

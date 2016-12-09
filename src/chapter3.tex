@@ -1,2 +1,151 @@
-\chapter{Eredmények, továbbfejlesztési lehetőségek}
+\chapter{Tapasztalatok, továbbfejlesztési lehetőségek}
 
+\section{Tapasztalatok}
+
+A fejlesztés során a legnagyobb technikai problémát a kliens és a szerver közti
+kapcsolat és szinkronizáció tesztelése jelentette, az egy-egy bug előidézéséhez
+szükséges körülmények reprodukálása nagyon nehézkes volt, gyakran csak a
+szerencsén múlott, hiszen a hálózat sebessége fölött csak minimális kontrollunk
+lehet fejlesztés közben. Végül sikerült kihasználnom a tényt, hogy a szerver
+kódja (egy része) képes a böngészőben is futni, így egy egyszerű proxy osztály
+elkészítésével (ami a WebSocket kapcsolatot volt hivatott helyettesíteni) képes
+voltam a teljes szinkronizációs logika tesztelésére a böngészőben, ami nagyban
+megkönnyítette a manuális tesztelést, illetve a hibák debugolását.
+
+\subsection{JavaScript fejlesztői eszközök}
+
+Az elmúlt években a JavaScript alkalmazások fejlesztéséhez szükséges eszközök
+komplexitása érezhetően megnőtt, ezt sokan negatívumként hozzák fel, azonban a
+tapasztalataim alapján ez inkább előnyére vált a fejlesztési folyamatnak. A
+\emph{Babel} segítségével képes voltam túllépni a böngészők változatos
+JavaScript futtatókörnyezetei által szabott korlátokon, képes voltam az ES2015
+nyújtotta előnyöket kihasználni, ezáltal sokkal olvashatóbb, logikusabban
+struktúrált kódot írni.
+
+A FlowType a fejlesztés során magabiztosságot nyújtott, minden egyes módosítást
+bátran végeztem el, korábban ez közel sem volt így, típusellenőrzések nélkül a
+paraméterek illetve a függvények visszatérési értékeiben bekövetkezett
+változások egészen komplex, és nehezen visszakövetkező hibákat okoztak. A
+FlowType-pal szemben gyakran felhozott egyik negatívum az annotációk okozta
+rugalmatlanság, illetve hogy gyakran magának a metódus szignatúrájának
+megfogalmazása nem egyszerű. Én úgy gondolom, hogy az okozott kellemetlenségek
+messze eltörpülnek a típusosság által biztosított előnyök mellett.
+
+A FlowType természetesen még egy új technológia, nem mentes a ,,furcsaságoktól",
+az olyan helyzetektől, amikor az egyébként helyes kódot a rendszer túl szigorúan
+ellenőriz, és helytelennek gondol:
+
+\begin{js}
+function foo(x: { y: ?string }): string {
+  if (x.y) {
+    bar();
+    return x.y; // error
+  } else {
+    return 'baz';
+  }
+}
+\end{js}
+
+A fenti példában a \texttt{bar()} hívás elvben módosíthatja \texttt{x.y} értékét
+(akár \texttt{null} vagy \texttt{undefined}-re is állíthatja), így a fordító
+hibásnak ítéli meg a kódot, hiszen nem garantált a \texttt{string} visszatérési
+érték.
+
+\section{Továbbfejlesztési lehetőségek}
+
+A fejlesztés során számos olyan új lehetőség jött elő, melyre a tervezés során
+nem is gondoltam, ezek közül emeltem ki néhányat, melyek mind magát a játék
+minőségét emelnék, illetve az üzemeltetést egyszerűsítenék le a jövőben.
+
+\subsection{Moduláris vezérlés}
+
+A programozott vezérlés teljes szabadságot ad a felhasználó kezébe, hiszen a
+vezérlés teljes kódjának elkészítése az ő felelőssége. Ehhez azonban komplex
+programozási ismeretek szükségesek, így ezt a funkciót csak a felhasználók
+töredéke képes kihasználni.
+
+Egy érdekes fejlesztés lehetne, ha a programozási ismeretekkel nem rendelkező
+felhasználók is elérhetnék ezeket a funkciókat, valamilyen könnyen kezelhető
+grafikus felületről, ahol a más (hozzáértő) felhasználók által elkészített
+önálló vezérlő logikákat felhasználhatnák:
+
+\begin{itemize}
+  \item Egy adott billentyűre a felhasználó űrhajója automatikusan a
+  legközelebbi ellenfél sebességvektorát felveszi, így könnyítve az amúgy nem
+  túl intuitív navigációt.
+  \item Az egér kurzorát mozgatva az űrhajó a megadott irányba áll (ez a művelet
+  manuálisan különösen nehéz, azonban egy egyszerű szabályzóval könnyen
+  megoldható).
+\end{itemize}
+
+\subsection{Több hajó vezérlése}
+
+A játékosok alapvetően egy űrhajót irányítanak a játékban, mivel annak vezérlése
+manuálisan történik, így egyszerre több űrhajót vezérelni egyszerűen túl komplex
+feladat a játékosok számára. Mivel azonban a lehetőség adott a teljesen autonóm
+vezérlő megírására, így érdemes lehet megvizsgálni azt a lehetőséget, hogy
+egyszerre több űrhajót bízunk a játékosra.
+
+Ezzel a funkcióval jóval komplexebb vezérlők implementálására is lehetőség
+nyílik, hiszen az egyes űrhajóknak célszerű összedolgozniuk.
+
+\subsection{Testreszabható játékelemek}
+
+Az elkészült szoftver egy fajta játéküzemmódot, illetve egy fajta űrhajót
+tartalmaz, azonban már a szoftver megírásakor figyelembe vettem, hogy ez a
+későbbiekben változhat, így a későbbiekben könnyen lehet bele újabb típusú
+űrhajókat, pl. könnyen navigálható, gyors, de gyenge páncélzatú űrhajót és
+lomha, de jól páncélozott egységeket beépíteni.
+
+A játék jellegét tekintve \emph{mindenki mindenki ellen} módban működik, érdemes
+lehet a jövőben más módok bevezetését is kipróbálni (pl. csapatok küzdelme
+egymás ellen).
+
+\subsection{Egyszerűbb deployment folyamat}
+
+Az üzemeltetés szempontjából a jelenlegi deploy folyamat egy komplett virtuális
+gépet tekint a célkörnyezetnek, melynek a specifikációja nem ismert, így az
+élesítés során számos ellenőrzés elvégzése szükséges (rendelkezésre állnak-e a
+megfelelő npm csomagok, telepítve van-e a megfelelő adatbázis).
+
+A folyamat egyszerűsíthető, ha virtuális gép helyett konténereket használunk,
+pl. a napjainkban egyre népszerűbb Docker-t\cite{docker}. Az üzemeltetés ekkor
+pusztán csak a megfelelő konténer futtatására terjed ki, magának a konténernek a
+felkonfigurálása csak egyszer szükséges, így akkor elvégezhetjük a függőségek
+telepítését. A megoldás másik előnye, hogy a szoftver izoláltan fut, így ha az
+adott környezetben egy másik szoftvert is szeretnénk futtatni, ami pl. egy másik
+adatbázis verziót igényel, akkor ezt minden további nélkül megtehetjük, hiszen
+konténer technológia biztosítja, hogy a különböző verziók izoláltan fussanak.
+
+\subsection{Automatikus skálázás}
+
+Az alkalmazás által feltételezett infrastruktúra jelenleg statikus, azaz a játék
+egy központi szerverként működik, nincs felkészítve kooperációra. Ez
+nyilvánvalóan korlátozza a skálázási lehetőségeket, hiszen a rendelkezésre álló
+erőforrások (CPU illetve memória kapacitás) csak korlátozottan bővíthetőek.
+
+Architektúrális szempontból a lehetőség adott, hogy a játékot lebonyolító
+szerverhez újabb szervereket adjunk. Ez a típusú skálázás horizontális, így
+jóval rugalmasabb is. Ha pedig a rendszer erre felkészítjük, akár történhet
+automatikusan is, azaz ha egy adott limitet elér a rendszer, automatikusan
+elindul egy újabb példányban, ami képes újabb játékosokat fogadni.
+
+Az implementáció bonyolultsága miatt azonban ez csak egy nagyon távoli cél, maga
+a téma az összetettsége miatt pedig akár önálló szakdolgozat illetve diplomaterv
+téma is lehetne.
+
+\section{Összegzés}
+
+Az elérhető webes technológiák összehasonlítása illetve kiértékelése után
+kiválasztottam a megvalósításhoz szükséges megoldásokat, ezek segítségével
+elkészítettem a feladatkiírásban definiált játékhoz a kliens illetve a szerver
+alkalmazást. A tervezés során kiemelt figyelmet fordítottam a játék minél
+realisztikusabb fizikai modelljére, illetve a kliens-szerver között történű
+WebSocket kommunikáció optimalizálására. A játékba a külső vezérlés lehetőségét
+is beépítettem, azaz megnyitottam a lehetőséget egyéni játékvezérlők írására is,
+ezt egy példa vezérlő megírásával teszteltem. A játék kódját unit tesztekkel
+fedtem le, illetve a Travis CI rendszert a fejlesztési folyamat szerves részévé
+tettem. Az alkalmazás deploy igényeinek megvizsgálása után ezt éles környezetbe
+is kihelyeztem, melyet részben automatizáltam, a későbbi élesítések
+megkönnyítése érdekében. Végül összegeztem a tapasztalataimat, illetve néhány
+izgalmasnak tűnő továbbfejlesztési lehetőséget is felvetettem.

@@ -8,4 +8,4 @@ full: clean
 	xelatex -shell-escape diploma.tex
 
 clean:
-	rm *.toc *.aux *.thm *.log *.blg *.bbl *.out *.pdf || true
+	rm -rf *.toc *.aux *.thm *.log *.blg *.bbl *.out *.pdf *.lof _* || true

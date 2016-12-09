@@ -9,14 +9,16 @@
 \usepackage[top=25mm,right=25mm,bottom=25mm,left=35mm]{geometry}
 \usepackage{lastpage}
 
-\def\magyarOptions{defaults=prettiest,active=none,shorthandcs=none}
-\usepackage[hungarian,english]{babel}
+% \def\magyarOptions{defaults=prettiest,active=none,shorthandcs=none}
+\usepackage[hungarian]{babel}
 
 \usepackage{sectsty}
 \usepackage{setspace}
 \usepackage[hang]{caption}
 \usepackage{hyperref}
-\usepackage{minted}
+% \usepackage{minted}
+\usepackage{listings}
+
 
 \newcommand{\vikszerzo}{Dányi Bence}
 \newcommand{\vikkonzulens}{Imre Gábor}
@@ -53,13 +55,32 @@
 \newcommand{\listref}[1]{\ref{listing:#1}.}
 \newcommand{\secref}[1]{\ref{sec:#1}}
 \newcommand{\tabref}[1]{\ref{tab:#1}.}
+\newcommand{\fig}[4]{\begin{figure}\begin{center}\includegraphics[#1]{figures/#2}\end{center}\caption{#3}\label{fig:#4}\end{figure}}
 
-\newminted[js]{javascript}{fontsize=\footnotesize}
-\newminted[jade]{jade}{fontsize=\footnotesize}
-\newminted[html]{html}{fontsize=\footnotesize}
-\newminted[sh]{sh}{fontsize=\footnotesize}
-\newminted[css]{css}{fontsize=\footnotesize}
-\newminted[stylus]{jade}{fontsize=\footnotesize}
+% \newminted[js]{javascript}{fontsize=\footnotesize}
+% \newminted[jade]{jade}{fontsize=\footnotesize}
+% \newminted[html]{html}{fontsize=\footnotesize}
+% \newminted[sh]{sh}{fontsize=\footnotesize}
+% \newminted[css]{css}{fontsize=\footnotesize}
+% \newminted[stylus]{jade}{fontsize=\footnotesize}
+% \newminted[glsl]{c}{fontsize=\footnotesize}
+% \newminted[nginx]{nginx}{fontsize=\footnotesize}
+
+\lstset{%
+  basicstyle=\footnotesize\ttfamily,
+  aboveskip=0.5cm,
+  xleftmargin=1cm,
+  xrightmargin=1cm
+}
+
+\lstnewenvironment{js}{}{}
+\lstnewenvironment{jade}{}{}
+\lstnewenvironment{html}{}{}
+\lstnewenvironment{sh}{}{}
+\lstnewenvironment{css}{}{}
+\lstnewenvironment{stylus}{}{}
+\lstnewenvironment{glsl}{}{}
+\lstnewenvironment{nginx}{}{}
 
 \author{\vikszerzo}
 \title{\viktitle}
@@ -85,7 +106,7 @@
 \include{titlepage}
 \tableofcontents\vfill
 \include{declaration}
-% \include{abstract}
+\include{abstract}
 \include{introduction}
 \include{chapter1}
 \include{chapter2}

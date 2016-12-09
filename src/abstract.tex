@@ -1,11 +1,48 @@
 \chapter*{Kivonat}\addcontentsline{toc}{chapter}{Kivonat}
 
-\vfill
+A számítógépes játékokkal szemben számos követelményt támasztanak a
+felhasználók, ilyen pl. az igényes grafika, valós idejű többjátékos üzemmód.
+Ezeket az igényeket korábban a böngészőkön keresztül elhozni a felhasználókhoz
+lehetetlen volt, azonban a modern, web alapú technológiák megjelenésével ez
+megváltozott: a WebGL által a natív megoldásokkal összemérhető teljesítményű
+grafikai megjelenítést vagyunk képesek megvalósítani, a Websocket technológia
+által pedig képesek vagyunk a full-duplex valós idejű kommunikációra, mindehhez
+csupán egy böngészőre van szükség.
 
-\selectlanguage{english}
+A diplomatervem célja a jelenleg elérhető webes technológiák bemutatása, illetve
+a segítségükkel egy játék elkészítése, a fejlesztés végigkövetése a tervezéstől
+kezdve a tesztelésen át az üzemeltetéssel bezárólag. A megvalósítás egy Node.JS
+alapú szerver, illetve egy böngészőben futtatható JavaScript kliens alkalmazásra
+terjed ki. A szerver egy PostgreSQL adatbázis használ adattárolásra, a klienssel
+történő kommunikáció WebSocketen protokollon keresztül történik, a felhasználói
+felület pedig a Reacthoz hasonló virtual DOM alapú Inferno keretrendszerrel, és
+WebGL technológia segítségével készült.
+
+Az alkalmazás éles környezetben egy nginx reverse proxy mögött fut egy virtuális
+szerveren, melyre az élesítési folyamatot az Ansible segítségével
+automatizáltam.
+
+\vfill
 
 \chapter*{Abstract}\addcontentsline{toc}{chapter}{Abstract}
 
-\vfill
+The users have a lot of demanding requirements for computer games, eg. nice
+visual appearance, real-time multiplayer game mode.  These feaures were
+basically impossible to implement in browsers, but with the development of
+modern web technologies this is no longer the case: with WebGL we are able to
+deliver 3D graphics that has the same performance as their native counterpart,
+and with WebSockets we are able to implement full-duplex communication between
+the client and the server, and all we need is just a regular browser.
 
-\selectlanguage{hungarian}
+The goal of my thesis is to present the currently available web technologies,
+and to build a game based on these technologies. The implementation consists of
+a Node.JS based server application and a browser-based JavaScript client
+application. The server uses PostgreSQL to store data, the communication
+protocol between the client and the server is based on WebSockets. The user
+interface is built with the React-like virtual dom based Inferno framework, and
+it also uses WebGL for graphics.
+
+The application was deployed to a live environment, where the server runs behind
+an nginx reverse proxy. The deployment process was automated with Ansible.
+
+\vfill
